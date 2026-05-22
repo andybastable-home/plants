@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Plants">
+  <rect width="512" height="512" rx="112" fill="#2d8659"/>
+  <!-- Leaves -->
+  <ellipse cx="200" cy="220" rx="40" ry="90" transform="rotate(-25 200 220)" fill="#8fd0ad"/>
+  <ellipse cx="312" cy="220" rx="40" ry="90" transform="rotate(25 312 220)" fill="#8fd0ad"/>
+  <ellipse cx="256" cy="170" rx="44" ry="110" fill="#b5e3c8"/>
+  <!-- Stem -->
+  <rect x="248" y="260" width="16" height="90" rx="6" fill="#1a4d33"/>
+  <!-- Pot -->
+  <rect x="160" y="340" width="192" height="20" rx="6" fill="#a55f2b"/>
+  <path d="M172 360 L340 360 L322 444 L190 444 Z" fill="#c97a3f"/>
+</svg>

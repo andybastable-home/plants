@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2d8659">
+  <meta name="description" content="Personal plant care tracker.">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon.svg">
+  <link rel="stylesheet" href="./styles.css">
+  <title>Plants</title>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img src="./icons/icon.svg" alt="" class="brand-mark" width="32" height="32">
+      <span class="brand-name">Plants</span>
+      <span class="brand-version" aria-label="App version">v0.1.0</span>
+    </div>
+  </header>
+
+  <nav class="tab-strip" role="tablist" aria-label="Sections">
+    <button class="tab-btn" role="tab" data-tab="today" aria-selected="true">Today</button>
+    <button class="tab-btn" role="tab" data-tab="plants" aria-selected="false">Plants</button>
+    <button class="tab-btn" role="tab" data-tab="settings" aria-selected="false">Settings</button>
+  </nav>
+
+  <main class="app-main">
+    <section class="tab-pane" data-pane="today">
+      <p class="placeholder">Today&rsquo;s tasks will live here.</p>
+    </section>
+    <section class="tab-pane" data-pane="plants" hidden>
+      <p class="placeholder">Rooms and plants will live here.</p>
+    </section>
+    <section class="tab-pane" data-pane="settings" hidden>
+      <p class="placeholder">Settings will live here.</p>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>v0.1.0 &middot; offline-ready</span>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
