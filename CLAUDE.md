@@ -31,8 +31,8 @@ Each phase below is sized to fit in a **single Claude context window** — Andy 
 
 | Phase | Title                                  | Status      |
 | ----- | -------------------------------------- | ----------- |
-| 1     | Bootstrap & Claude plumbing            | in progress |
-| 2     | Data model + Rooms/Plants CRUD (local) | not started |
+| 1     | Bootstrap & Claude plumbing            | done        |
+| 2     | Data model + Rooms/Plants CRUD (local) | next        |
 | 3     | Today tab — due/overdue logic          | not started |
 | 4     | Google Sheets sync                     | not started |
 | 5     | Gemini text classification             | not started |

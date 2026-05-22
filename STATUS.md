@@ -2,31 +2,20 @@
 
 ## Current phase
 
-**Phase 1 — Bootstrap & Claude plumbing** (in progress)
+**Phase 2 — Data model + Rooms/Plants CRUD (local)** (not started)
 
-Goal: New repo, GitHub Pages live, installable PWA shell with 3 empty tabs (Today / Plants / Settings), Claude plumbing (`CLAUDE.md`, this file, `.scripts/export-context.ps1`) ready for Phase 2.
-
-Phase 1 is intentionally feature-free. The tabs render and switch; nothing else works yet.
-
-## Visual style — locked
-
-Aesthetic: refined botanical journal. Fraunces variable serif for display (local woff2 at `./assets/fonts/fraunces-latin.woff2`), system sans for body. HSL palette with light + dark themes, accent green at `hsl(150 42% 30%)`, warm-paper background at `hsl(60 25% 97%)`.
-
-Phase 2+ should reference `notes/style-guide.html` for the full vocabulary — it has the canonical card / plant-row / room / action-btn / status-pill styles ready to lift into `styles.css` when those components are needed. Don't reinvent.
+Goal: Model rooms and plants in IndexedDB via Dexie, mirroring `food-and-weight`'s schema-versioned pattern. Build the Plants tab UI: rooms as collapsible sections, plants as rows. Add an "Add plant" form (name, emoji, room, water cadence, feed cadence — all manual; no AI yet). Persist locally. No sync.
 
 ## Next 2-3 steps
 
-1. Finish Phase 1 verification on the Pixel 8a — install the PWA, confirm standalone mode, confirm offline reload still shows the shell, confirm Fraunces loads (the brand wordmark should render as serif, not Georgia fallback).
-2. Start a fresh Claude session for **Phase 2: Data model + Rooms/Plants CRUD (local)**. Mirror `food-and-weight`'s Dexie schema patterns. Add tabs: room list with collapsible plant entries, add-plant form (manual name/emoji/cadence — no AI yet). Persist to IndexedDB. No sync yet. Lift component styles from `notes/style-guide.html` rather than designing new ones.
-3. After Phase 2 lands, **Phase 3: Today tab** will compute "Water in N days" / "Overdue by N days" from a `care_events` table and make Today the default tab on open.
-
-## Open questions
-
-(none right now)
+1. Confirm the data model with Andy before writing the schema. Working assumption: stores for `rooms` (id, name, order), `plants` (id, room_id, name, emoji, quantity, water_days, feed_days, feed_label, notes), and `care_events` (id, plant_id, kind: 'water'|'feed', timestamp). **Open question:** does `care_events` land in Phase 2 (so Plants rows can show "last watered" timestamps) or slip to Phase 3?
+2. Lift component CSS from `notes/style-guide.html` into `styles.css`: `.plant-card`, `.plant-row`, `.room`, `.action-btn`, `.status-pill`. Keep the class names so Phase 3 can reuse them on the Today tab.
+3. Build the Plants tab: render rooms from Dexie, plant rows under each, "Add plant" floating action button at the bottom of the screen for thumb reach, modal-style form.
 
 ## Conventions
 
 - Current version: **v0.2.0**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
-- Three-location version bump on every commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
+- Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.
+- Visual style is locked. Lift component patterns from `notes/style-guide.html`; don't redesign.
