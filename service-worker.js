@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.1.0';
+const CACHE_VERSION = 'v0.2.0';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -9,6 +9,7 @@ const SHELL = [
   './app.js',
   './manifest.json',
   './icons/icon.svg',
+  './assets/fonts/fraunces-latin.woff2',
 ];
 
 self.addEventListener('install', (event) => {
