@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2d5e44" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f1a14" media="(prefers-color-scheme: dark)">
+  <title>Plants — Visual Style Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&display=swap" rel="stylesheet">
+
+  <style>
+    /* ============================================================
+       Design tokens — light theme
+       ============================================================ */
+    :root {
+      --color-bg:           hsl(60 25% 97%);
+      --color-bg-tint:      hsl(120 18% 95%);
+      --color-surface:      hsl(0 0% 100%);
+      --color-surface-alt:  hsl(120 20% 95%);
+      --color-text:         hsl(150 18% 13%);
+      --color-text-muted:   hsl(140 9% 42%);
+      --color-text-faint:   hsl(140 8% 60%);
+
+      --color-accent:        hsl(150 42% 30%);
+      --color-accent-strong: hsl(150 50% 22%);
+      --color-accent-soft:   hsl(150 35% 93%);
+
+      --color-border:       hsl(120 12% 88%);
+      --color-border-soft:  hsl(120 14% 93%);
+
+      --color-shadow:       hsl(150 30% 15% / 0.06);
+      --color-shadow-lg:    hsl(150 30% 15% / 0.12);
+
+      --color-success:        hsl(150 45% 36%);
+      --color-success-soft:   hsl(150 40% 94%);
+      --color-warning:        hsl(28 70% 44%);
+      --color-warning-soft:   hsl(32 75% 95%);
+      --color-danger:         hsl(4 62% 48%);
+      --color-danger-soft:    hsl(4 70% 96%);
+
+      /* Spacing */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --space-7: 48px;
+      --space-8: 64px;
+
+      /* Radii */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-pill: 999px;
+
+      /* Type */
+      --font:         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+      --font-mono:    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    /* Dark theme */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-bg:           hsl(150 16% 8%);
+        --color-bg-tint:      hsl(150 14% 11%);
+        --color-surface:      hsl(150 16% 12%);
+        --color-surface-alt:  hsl(150 14% 16%);
+        --color-text:         hsl(80 18% 94%);
+        --color-text-muted:   hsl(140 9% 62%);
+        --color-text-faint:   hsl(140 8% 48%);
+
+        --color-accent:        hsl(150 45% 60%);
+        --color-accent-strong: hsl(150 50% 72%);
+        --color-accent-soft:   hsl(150 30% 18%);
+
+        --color-border:       hsl(150 10% 20%);
+        --color-border-soft:  hsl(150 10% 16%);
+
+        --color-shadow:       hsl(0 0% 0% / 0.3);
+        --color-shadow-lg:    hsl(0 0% 0% / 0.5);
+
+        --color-success:        hsl(150 50% 62%);
+        --color-success-soft:   hsl(150 30% 18%);
+        --color-warning:        hsl(28 70% 62%);
+        --color-warning-soft:   hsl(28 30% 18%);
+        --color-danger:         hsl(4 65% 62%);
+        --color-danger-soft:    hsl(4 30% 18%);
+      }
+    }
+
+    /* Forced theme override (theme toggle) */
+    [data-theme="light"] {
+      --color-bg:           hsl(60 25% 97%);
+      --color-bg-tint:      hsl(120 18% 95%);
+      --color-surface:      hsl(0 0% 100%);
+      --color-surface-alt:  hsl(120 20% 95%);
+      --color-text:         hsl(150 18% 13%);
+      --color-text-muted:   hsl(140 9% 42%);
+      --color-text-faint:   hsl(140 8% 60%);
+      --color-accent:        hsl(150 42% 30%);
+      --color-accent-strong: hsl(150 50% 22%);
+      --color-accent-soft:   hsl(150 35% 93%);
+      --color-border:       hsl(120 12% 88%);
+      --color-border-soft:  hsl(120 14% 93%);
+      --color-shadow:       hsl(150 30% 15% / 0.06);
+      --color-shadow-lg:    hsl(150 30% 15% / 0.12);
+      --color-success:      hsl(150 45% 36%);
+      --color-success-soft: hsl(150 40% 94%);
+      --color-warning:      hsl(28 70% 44%);
+      --color-warning-soft: hsl(32 75% 95%);
+      --color-danger:       hsl(4 62% 48%);
+      --color-danger-soft:  hsl(4 70% 96%);
+    }
+    [data-theme="dark"] {
+      --color-bg:           hsl(150 16% 8%);
+      --color-bg-tint:      hsl(150 14% 11%);
+      --color-surface:      hsl(150 16% 12%);
+      --color-surface-alt:  hsl(150 14% 16%);
+      --color-text:         hsl(80 18% 94%);
+      --color-text-muted:   hsl(140 9% 62%);
+      --color-text-faint:   hsl(140 8% 48%);
+      --color-accent:        hsl(150 45% 60%);
+      --color-accent-strong: hsl(150 50% 72%);
+      --color-accent-soft:   hsl(150 30% 18%);
+      --color-border:       hsl(150 10% 20%);
+      --color-border-soft:  hsl(150 10% 16%);
+      --color-shadow:       hsl(0 0% 0% / 0.3);
+      --color-shadow-lg:    hsl(0 0% 0% / 0.5);
+      --color-success:      hsl(150 50% 62%);
+      --color-success-soft: hsl(150 30% 18%);
+      --color-warning:      hsl(28 70% 62%);
+      --color-warning-soft: hsl(28 30% 18%);
+      --color-danger:       hsl(4 65% 62%);
+      --color-danger-soft:  hsl(4 30% 18%);
+    }
+
+    /* ============================================================
+       Reset + base
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    img, svg { display: block; max-width: 100%; }
+    button { font-family: inherit; }
+
+    body {
+      font-family: var(--font);
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100dvh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      font-size: 16px;
+      line-height: 1.55;
+      transition: background 200ms ease, color 200ms ease;
+    }
+
+    /* ============================================================
+       Page chrome — preview-only (not part of the app)
+       ============================================================ */
+    .preview-page {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: var(--space-7) var(--space-5) var(--space-8);
+    }
+
+    .preview-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--space-5);
+      flex-wrap: wrap;
+      margin-bottom: var(--space-7);
+      padding-bottom: var(--space-5);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .preview-title {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: clamp(32px, 6vw, 44px);
+      line-height: 1.05;
+      letter-spacing: -0.022em;
+      font-variation-settings: "opsz" 96;
+      margin: 0 0 var(--space-3);
+      color: var(--color-text);
+    }
+    .preview-title em {
+      font-style: italic;
+      font-weight: 400;
+      color: var(--color-accent);
+    }
+    .preview-sub {
+      color: var(--color-text-muted);
+      max-width: 52ch;
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: 4px;
+      background: var(--color-surface-alt);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+    }
+    .theme-toggle button {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: var(--color-text-muted);
+      padding: 6px 12px;
+      border-radius: var(--radius-pill);
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 160ms ease, color 160ms ease;
+    }
+    .theme-toggle button[aria-pressed="true"] {
+      background: var(--color-surface);
+      color: var(--color-text);
+      box-shadow: 0 1px 3px var(--color-shadow);
+    }
+
+    .preview-section-label {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--color-text-faint);
+      margin: 0 0 var(--space-3);
+      font-variation-settings: "opsz" 14;
+    }
+
+    /* ============================================================
+       Phone frame — wraps each app mockup
+       ============================================================ */
+    .mockup-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: var(--space-6);
+      margin-bottom: var(--space-8);
+    }
+    .mockup {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .mockup-label {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      color: var(--color-text-muted);
+      font-variation-settings: "opsz" 18;
+    }
+    .mockup-label::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-accent);
+      margin-right: var(--space-2);
+      vertical-align: middle;
+    }
+    .phone-frame {
+      width: 100%;
+      max-width: 412px;
+      margin: 0 auto;
+      border-radius: 28px;
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      box-shadow:
+        0 1px 0 hsl(0 0% 100% / 0.5) inset,
+        0 20px 40px -20px var(--color-shadow-lg),
+        0 4px 12px -4px var(--color-shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 720px;
+    }
+
+    /* ============================================================
+       App shell — the actual styles the PWA will use
+       ============================================================ */
+    .app-header {
+      padding: var(--space-4) var(--space-5);
+      border-bottom: 1px solid var(--color-border-soft);
+      background: var(--color-surface);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 0;
+      flex: 1;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--space-2);
+      background: var(--color-accent);
+      display: grid;
+      place-items: center;
+      color: hsl(60 25% 97%);
+      flex-shrink: 0;
+    }
+    .brand-mark svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .brand-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      font-variation-settings: "opsz" 30;
+      color: var(--color-text);
+    }
+
+    .brand-version {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      background: var(--color-surface-alt);
+      padding: 3px 8px;
+      border-radius: var(--radius-pill);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .settings-btn {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      background: none;
+      border: none;
+      border-radius: var(--radius-sm);
+      color: var(--color-text-muted);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: color 120ms ease, background 120ms ease;
+    }
+    .settings-btn:hover { color: var(--color-text); background: var(--color-surface-alt); }
+    .settings-btn:active { background: var(--color-accent-soft); }
+
+    .tab-strip {
+      display: flex;
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border-soft);
+      padding: 0 var(--space-3);
+    }
+    .tab-btn {
+      flex: 1;
+      min-height: 48px;
+      padding: 0 var(--space-2);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--color-text-muted);
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      cursor: pointer;
+      font-variation-settings: "opsz" 18;
+      transition: color 160ms ease, border-color 160ms ease;
+    }
+    .tab-btn[aria-selected="true"] {
+      color: var(--color-accent);
+      border-bottom-color: var(--color-accent);
+      font-weight: 600;
+    }
+
+    .app-main {
+      flex: 1;
+      padding: var(--space-5) var(--space-4) var(--space-6);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      background: var(--color-bg);
+    }
+
+    /* Today tab — date headline */
+    .today-headline {
+      padding: 0 var(--space-2);
+    }
+    .today-headline-date {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 28px;
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+      margin: 0;
+      font-variation-settings: "opsz" 48;
+      color: var(--color-text);
+    }
+    .today-headline-meta {
+      margin: var(--space-1) 0 0;
+      font-size: 13.5px;
+      color: var(--color-text-muted);
+      letter-spacing: 0.005em;
+    }
+    .today-headline-meta strong {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+
+    /* Plant card — Today */
+    .plant-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-soft);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      box-shadow: 0 1px 3px var(--color-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      transition: box-shadow 160ms ease, transform 160ms ease;
+    }
+    .plant-card.is-overdue {
+      border-color: hsl(4 50% 80% / 0.5);
+      background: linear-gradient(180deg, var(--color-danger-soft) 0%, var(--color-surface) 60%);
+    }
+    @media (prefers-color-scheme: dark) {
+      .plant-card.is-overdue {
+        border-color: hsl(4 30% 30% / 0.7);
+      }
+    }
+    [data-theme="dark"] .plant-card.is-overdue {
+      border-color: hsl(4 30% 30% / 0.7);
+    }
+
+    .plant-card-head {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+    }
+    .plant-emoji {
+      font-size: 32px;
+      line-height: 1;
+      flex-shrink: 0;
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      background: var(--color-bg-tint);
+      border-radius: var(--radius-md);
+    }
+    .plant-titles {
+      flex: 1;
+      min-width: 0;
+    }
+    .plant-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 19px;
+      letter-spacing: -0.015em;
+      line-height: 1.15;
+      margin: 0;
+      font-variation-settings: "opsz" 24;
+      color: var(--color-text);
+    }
+    .plant-name .qty {
+      font-weight: 400;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+      margin-left: 4px;
+    }
+    .plant-meta {
+      margin: 2px 0 0;
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    /* Status pill — shown top-right of card */
+    .status-pill {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .status-pill.is-overdue {
+      background: var(--color-danger-soft);
+      color: var(--color-danger);
+    }
+    .status-pill.is-due {
+      background: var(--color-warning-soft);
+      color: var(--color-warning);
+    }
+    .status-pill.is-soon {
+      background: var(--color-surface-alt);
+      color: var(--color-text-muted);
+    }
+
+    /* Action buttons */
+    .plant-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-2);
+    }
+    .action-btn {
+      min-height: 44px;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-family: var(--font);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 1px;
+      text-align: left;
+      transition: background 160ms ease, border-color 160ms ease, transform 80ms ease;
+    }
+    .action-btn:active { transform: scale(0.985); }
+    .action-btn-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+    }
+    .action-btn-row svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+    .action-btn-status {
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+    .action-btn.is-due {
+      background: var(--color-accent);
+      border-color: var(--color-accent);
+      color: hsl(60 25% 97%);
+    }
+    [data-theme="dark"] .action-btn.is-due,
+    @media (prefers-color-scheme: dark) {
+      .action-btn.is-due { color: hsl(150 20% 8%); }
+    }
+    .action-btn.is-due .action-btn-status { color: hsl(150 40% 88% / 0.95); }
+    [data-theme="dark"] .action-btn.is-due .action-btn-status { color: hsl(150 20% 18% / 0.8); }
+
+    .action-btn.is-overdue {
+      background: var(--color-danger);
+      border-color: var(--color-danger);
+      color: white;
+    }
+    .action-btn.is-overdue .action-btn-status { color: hsl(0 0% 100% / 0.85); }
+
+    .action-btn.is-future {
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+    }
+
+    /* Plants tab — room sections */
+    .plants-headline {
+      padding: 0 var(--space-2);
+      margin-bottom: var(--space-1);
+    }
+    .plants-headline h2 {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 28px;
+      letter-spacing: -0.025em;
+      margin: 0;
+      font-variation-settings: "opsz" 48;
+    }
+    .plants-headline p {
+      margin: var(--space-1) 0 0;
+      font-size: 13.5px;
+      color: var(--color-text-muted);
+    }
+
+    .room {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-soft);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 1px 3px var(--color-shadow);
+    }
+    .room-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-bg-tint);
+      border-bottom: 1px solid var(--color-border-soft);
+    }
+    .room-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 17px;
+      letter-spacing: -0.012em;
+      margin: 0;
+      font-variation-settings: "opsz" 22;
+    }
+    .room-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-faint);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .plant-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .plant-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: var(--space-3);
+      align-items: center;
+      padding: var(--space-3) var(--space-4);
+      border-bottom: 1px solid var(--color-border-soft);
+    }
+    .plant-row:last-child { border-bottom: none; }
+    .plant-row-emoji {
+      font-size: 22px;
+      line-height: 1;
+      width: 32px;
+      text-align: center;
+    }
+    .plant-row-name {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 15.5px;
+      letter-spacing: -0.01em;
+      margin: 0;
+      line-height: 1.15;
+      font-variation-settings: "opsz" 20;
+    }
+    .plant-row-schedule {
+      margin: 1px 0 0;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+    }
+    .plant-row-meta {
+      font-size: 11.5px;
+      color: var(--color-text-faint);
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    .app-footer {
+      padding: var(--space-4) var(--space-5);
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--color-text-faint);
+      border-top: 1px solid var(--color-border-soft);
+      background: var(--color-surface);
+      letter-spacing: 0.04em;
+    }
+
+    /* ============================================================
+       Style-guide section
+       ============================================================ */
+    .style-guide {
+      margin-top: var(--space-8);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--color-border);
+    }
+    .sg-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-5);
+      margin-top: var(--space-5);
+    }
+    .sg-block {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border-soft);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5);
+      box-shadow: 0 1px 3px var(--color-shadow);
+    }
+    .sg-block h3 {
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 18px;
+      letter-spacing: -0.015em;
+      margin: 0 0 var(--space-4);
+      font-variation-settings: "opsz" 22;
+    }
+
+    .swatch-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) 0;
+      border-bottom: 1px dashed var(--color-border-soft);
+    }
+    .swatch-row:last-child { border-bottom: none; }
+    .swatch {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border);
+      flex-shrink: 0;
+    }
+    .swatch-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .swatch-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0;
+    }
+    .swatch-token {
+      margin: 1px 0 0;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--color-text-muted);
+      letter-spacing: -0.02em;
+    }
+
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: var(--space-2) 0;
+      border-bottom: 1px dashed var(--color-border-soft);
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-sample {
+      font-family: var(--font-display);
+      color: var(--color-text);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .type-sample.is-body {
+      font-family: var(--font);
+      letter-spacing: 0;
+      line-height: 1.4;
+    }
+    .type-info {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--color-text-faint);
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+
+    .space-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 6px 0;
+    }
+    .space-bar {
+      background: var(--color-accent);
+      height: 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    .space-name {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--color-text-muted);
+      letter-spacing: -0.02em;
+    }
+
+    .radius-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 6px 0;
+    }
+    .radius-demo {
+      width: 44px;
+      height: 44px;
+      background: var(--color-accent-soft);
+      border: 1px solid var(--color-accent);
+      flex-shrink: 0;
+    }
+
+    .component-stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+    .component-stack .demo-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-variant-numeric: tabular-nums;
+    }
+    .pill.success { background: var(--color-success-soft); color: var(--color-success); }
+    .pill.warning { background: var(--color-warning-soft); color: var(--color-warning); }
+    .pill.danger  { background: var(--color-danger-soft);  color: var(--color-danger); }
+    .pill.muted   { background: var(--color-surface-alt);  color: var(--color-text-muted); }
+
+    /* Decorative paper-grain overlay (light mode only) */
+    .preview-page::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.4;
+      background-image:
+        radial-gradient(at 20% 10%, hsl(120 35% 92% / 0.6) 0%, transparent 45%),
+        radial-gradient(at 90% 80%, hsl(40 50% 92% / 0.5) 0%, transparent 55%);
+    }
+    @media (prefers-color-scheme: dark) {
+      .preview-page::before { opacity: 0.2; }
+    }
+
+    /* Entrance animations — staggered */
+    .stagger > * {
+      opacity: 0;
+      transform: translateY(8px);
+      animation: rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+    }
+    .stagger > *:nth-child(1) { animation-delay: 50ms; }
+    .stagger > *:nth-child(2) { animation-delay: 120ms; }
+    .stagger > *:nth-child(3) { animation-delay: 190ms; }
+    .stagger > *:nth-child(4) { animation-delay: 260ms; }
+    .stagger > *:nth-child(5) { animation-delay: 330ms; }
+    @keyframes rise {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .stagger > * { opacity: 1; transform: none; animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-page">
+    <header class="preview-head">
+      <div>
+        <h1 class="preview-title">Plants — <em>a visual style preview</em></h1>
+        <p class="preview-sub">A refined botanical journal for a single user, on a single phone. Fraunces variable serif sets the tone; the system sans handles the rest. Toggle the theme to see how it holds up after dark.</p>
+      </div>
+      <div class="theme-toggle" role="group" aria-label="Theme">
+        <button data-theme-set="auto" aria-pressed="true">Auto</button>
+        <button data-theme-set="light" aria-pressed="false">Light</button>
+        <button data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+    </header>
+
+    <p class="preview-section-label">Mockup · The app, two tabs</p>
+
+    <div class="mockup-row">
+      <!-- =========================================================
+           Mockup 1 — Today tab
+           ========================================================= -->
+      <div class="mockup">
+        <span class="mockup-label">Today</span>
+        <div class="phone-frame">
+
+          <header class="app-header">
+            <div class="brand">
+              <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22c0-6-4-9-9-9 0 6 4 9 9 9z"/>
+                  <path d="M12 22c0-7 4-11 9-11 0 7-4 11-9 11z"/>
+                  <path d="M12 22V11"/>
+                </svg>
+              </span>
+              <span class="brand-name">Plants</span>
+              <span class="brand-version">v0.1.0</span>
+            </div>
+            <button class="settings-btn" type="button" aria-label="Settings">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </header>
+
+          <nav class="tab-strip" role="tablist" aria-label="Sections">
+            <button class="tab-btn" role="tab" aria-selected="true">Today</button>
+            <button class="tab-btn" role="tab" aria-selected="false">Plants</button>
+            <button class="tab-btn" role="tab" aria-selected="false">Settings</button>
+          </nav>
+
+          <main class="app-main stagger">
+
+            <div class="today-headline">
+              <h1 class="today-headline-date">Friday, May 22</h1>
+              <p class="today-headline-meta"><strong>3</strong> tasks today &middot; <strong>1</strong> overdue</p>
+            </div>
+
+            <article class="plant-card is-overdue">
+              <div class="plant-card-head">
+                <span class="plant-emoji">🌿</span>
+                <div class="plant-titles">
+                  <h2 class="plant-name">Bird of Paradise</h2>
+                  <p class="plant-meta">Ensuite &middot; water every 6 days</p>
+                </div>
+                <span class="status-pill is-overdue">2 days late</span>
+              </div>
+              <div class="plant-actions">
+                <button class="action-btn is-overdue" type="button">
+                  <span class="action-btn-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l4.5 6.5a5.5 5.5 0 1 1-9 0z"/></svg>
+                    Water
+                  </span>
+                  <span class="action-btn-status">overdue · tap to log</span>
+                </button>
+                <button class="action-btn is-future" type="button">
+                  <span class="action-btn-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V11a5 5 0 0 1 10 0v10"/><path d="M12 11V3"/></svg>
+                    Feed
+                  </span>
+                  <span class="action-btn-status">in 18 days</span>
+                </button>
+              </div>
+            </article>
+
+            <article class="plant-card">
+              <div class="plant-card-head">
+                <span class="plant-emoji">🍅</span>
+                <div class="plant-titles">
+                  <h2 class="plant-name">Tomatoes <span class="qty">×10</span></h2>
+                  <p class="plant-meta">Garden &middot; water every 2 days</p>
+                </div>
+                <span class="status-pill is-due">Due today</span>
+              </div>
+              <div class="plant-actions">
+                <button class="action-btn is-due" type="button">
+                  <span class="action-btn-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l4.5 6.5a5.5 5.5 0 1 1-9 0z"/></svg>
+                    Water
+                  </span>
+                  <span class="action-btn-status">due today · tap to log</span>
+                </button>
+                <button class="action-btn is-due" type="button">
+                  <span class="action-btn-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V11a5 5 0 0 1 10 0v10"/><path d="M12 11V3"/></svg>
+                    Feed (tomato)
+                  </span>
+                  <span class="action-btn-status">due today · tap to log</span>
+                </button>
+              </div>
+            </article>
+
+            <article class="plant-card">
+              <div class="plant-card-head">
+                <span class="plant-emoji">🪴</span>
+                <div class="plant-titles">
+                  <h2 class="plant-name">Calatheas <span class="qty">×2</span></h2>
+                  <p class="plant-meta">Ensuite &middot; water every 5 days</p>
+                </div>
+                <span class="status-pill is-due">Due today</span>
+              </div>
+              <div class="plant-actions">
+                <button class="action-btn is-due" type="button">
+                  <span class="action-btn-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l4.5 6.5a5.5 5.5 0 1 1-9 0z"/></svg>
+                    Water
+                  </span>
+                  <span class="action-btn-status">due today · tap to log</span>
+                </button>
+                <button class="action-btn is-future" type="button">
+                  <span class="action-btn-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V11a5 5 0 0 1 10 0v10"/><path d="M12 11V3"/></svg>
+                    Feed
+                  </span>
+                  <span class="action-btn-status">in 9 days</span>
+                </button>
+              </div>
+            </article>
+
+          </main>
+
+          <footer class="app-footer">v0.1.0 &middot; offline-ready</footer>
+        </div>
+      </div>
+
+      <!-- =========================================================
+           Mockup 2 — Plants tab
+           ========================================================= -->
+      <div class="mockup">
+        <span class="mockup-label">Plants</span>
+        <div class="phone-frame">
+
+          <header class="app-header">
+            <div class="brand">
+              <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 22c0-6-4-9-9-9 0 6 4 9 9 9z"/>
+                  <path d="M12 22c0-7 4-11 9-11 0 7-4 11-9 11z"/>
+                  <path d="M12 22V11"/>
+                </svg>
+              </span>
+              <span class="brand-name">Plants</span>
+              <span class="brand-version">v0.1.0</span>
+            </div>
+            <button class="settings-btn" type="button" aria-label="Settings">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+            </button>
+          </header>
+
+          <nav class="tab-strip" role="tablist" aria-label="Sections">
+            <button class="tab-btn" role="tab" aria-selected="false">Today</button>
+            <button class="tab-btn" role="tab" aria-selected="true">Plants</button>
+            <button class="tab-btn" role="tab" aria-selected="false">Settings</button>
+          </nav>
+
+          <main class="app-main stagger">
+
+            <div class="plants-headline">
+              <h2>All plants</h2>
+              <p>3 rooms &middot; 7 plants</p>
+            </div>
+
+            <section class="room">
+              <header class="room-head">
+                <h3 class="room-name">Garden</h3>
+                <span class="room-count">3 plants</span>
+              </header>
+              <ul class="plant-list">
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🍅</span>
+                  <div>
+                    <h4 class="plant-row-name">Tomatoes <span class="qty">×10</span></h4>
+                    <p class="plant-row-schedule">Water every 2d · Feed weekly (tomato)</p>
+                  </div>
+                  <span class="plant-row-meta">Watered<br>today</span>
+                </li>
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🌳</span>
+                  <div>
+                    <h4 class="plant-row-name">Fig bush</h4>
+                    <p class="plant-row-schedule">Water every 5d · Feed monthly</p>
+                  </div>
+                  <span class="plant-row-meta">3d ago</span>
+                </li>
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🌻</span>
+                  <div>
+                    <h4 class="plant-row-name">Sunflowers <span class="qty">×10</span></h4>
+                    <p class="plant-row-schedule">Water every 3d</p>
+                  </div>
+                  <span class="plant-row-meta">1d ago</span>
+                </li>
+              </ul>
+            </section>
+
+            <section class="room">
+              <header class="room-head">
+                <h3 class="room-name">Ensuite</h3>
+                <span class="room-count">3 plants</span>
+              </header>
+              <ul class="plant-list">
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🪴</span>
+                  <div>
+                    <h4 class="plant-row-name">Calatheas <span class="qty">×2</span></h4>
+                    <p class="plant-row-schedule">Water every 5d</p>
+                  </div>
+                  <span class="plant-row-meta">5d ago</span>
+                </li>
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🌿</span>
+                  <div>
+                    <h4 class="plant-row-name">Bird of Paradise</h4>
+                    <p class="plant-row-schedule">Water every 6d · Feed monthly</p>
+                  </div>
+                  <span class="plant-row-meta">8d ago</span>
+                </li>
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🌱</span>
+                  <div>
+                    <h4 class="plant-row-name">Fern</h4>
+                    <p class="plant-row-schedule">Water every 3d</p>
+                  </div>
+                  <span class="plant-row-meta">2d ago</span>
+                </li>
+              </ul>
+            </section>
+
+            <section class="room">
+              <header class="room-head">
+                <h3 class="room-name">Astrid&rsquo;s Room</h3>
+                <span class="room-count">2 plants</span>
+              </header>
+              <ul class="plant-list">
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🌶️</span>
+                  <div>
+                    <h4 class="plant-row-name">Apache chillis <span class="qty">×2</span></h4>
+                    <p class="plant-row-schedule">Water every 3d · Feed fortnightly</p>
+                  </div>
+                  <span class="plant-row-meta">2d ago</span>
+                </li>
+                <li class="plant-row">
+                  <span class="plant-row-emoji">🌵</span>
+                  <div>
+                    <h4 class="plant-row-name">Tenerife succulent</h4>
+                    <p class="plant-row-schedule">Water every 14d</p>
+                  </div>
+                  <span class="plant-row-meta">6d ago</span>
+                </li>
+              </ul>
+            </section>
+
+          </main>
+
+          <footer class="app-footer">v0.1.0 &middot; offline-ready</footer>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         Style guide
+         ========================================================= -->
+    <section class="style-guide">
+      <p class="preview-section-label">Style guide · Tokens &amp; primitives</p>
+      <h2 class="preview-title" style="font-size: clamp(24px,4vw,32px); margin: var(--space-2) 0 var(--space-2);">The vocabulary</h2>
+      <p class="preview-sub">Everything in the app is built from these tokens. Edit them in <code style="font-family:var(--font-mono);font-size:0.9em;">styles.css</code> and the whole interface retunes.</p>
+
+      <div class="sg-grid">
+
+        <!-- Colors -->
+        <div class="sg-block">
+          <h3>Color · surfaces</h3>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-bg)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Background</p>
+              <p class="swatch-token">--color-bg</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-surface)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Surface</p>
+              <p class="swatch-token">--color-surface</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-surface-alt)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Surface alt</p>
+              <p class="swatch-token">--color-surface-alt</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-bg-tint)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Background tint</p>
+              <p class="swatch-token">--color-bg-tint</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sg-block">
+          <h3>Color · accents</h3>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-accent)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Accent (botanical)</p>
+              <p class="swatch-token">--color-accent · hsl(150 42% 30%)</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-accent-strong)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Accent strong</p>
+              <p class="swatch-token">--color-accent-strong</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-accent-soft)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Accent soft</p>
+              <p class="swatch-token">--color-accent-soft</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="sg-block">
+          <h3>Color · status</h3>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-success)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Success</p>
+              <p class="swatch-token">--color-success</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-warning)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Warning · due today</p>
+              <p class="swatch-token">--color-warning</p>
+            </div>
+          </div>
+          <div class="swatch-row">
+            <div class="swatch" style="background: var(--color-danger)"></div>
+            <div class="swatch-info">
+              <p class="swatch-name">Danger · overdue</p>
+              <p class="swatch-token">--color-danger</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Typography -->
+        <div class="sg-block" style="grid-column: span 2;">
+          <h3>Typography</h3>
+          <div class="type-row">
+            <span class="type-sample" style="font-size: 36px; font-variation-settings: 'opsz' 96; font-weight: 500;">A garden of small attentions</span>
+            <span class="type-info">Fraunces · 36 · 500 · opsz 96</span>
+          </div>
+          <div class="type-row">
+            <span class="type-sample" style="font-size: 28px; font-variation-settings: 'opsz' 48; font-weight: 500;">Friday, May 22</span>
+            <span class="type-info">Fraunces · 28 · 500 · opsz 48</span>
+          </div>
+          <div class="type-row">
+            <span class="type-sample" style="font-size: 21px; font-variation-settings: 'opsz' 30; font-weight: 600;">Plants</span>
+            <span class="type-info">Fraunces · 21 · 600 · brand</span>
+          </div>
+          <div class="type-row">
+            <span class="type-sample" style="font-size: 19px; font-variation-settings: 'opsz' 24; font-weight: 600;">Bird of Paradise</span>
+            <span class="type-info">Fraunces · 19 · 600 · card title</span>
+          </div>
+          <div class="type-row">
+            <span class="type-sample is-body" style="font-size: 15px;">Ensuite · water every 6 days</span>
+            <span class="type-info">System sans · 15 · 400</span>
+          </div>
+          <div class="type-row">
+            <span class="type-sample is-body" style="font-size: 13px; color: var(--color-text-muted);">3 rooms · 7 plants</span>
+            <span class="type-info">System sans · 13 · muted</span>
+          </div>
+          <div class="type-row">
+            <span class="type-sample is-body" style="font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-text-faint);">3 plants</span>
+            <span class="type-info">System sans · 11 · uppercase</span>
+          </div>
+        </div>
+
+        <!-- Spacing -->
+        <div class="sg-block">
+          <h3>Spacing</h3>
+          <div class="space-row"><div class="space-bar" style="width: 4px;"></div><span class="space-name">--space-1 · 4</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 8px;"></div><span class="space-name">--space-2 · 8</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 12px;"></div><span class="space-name">--space-3 · 12</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 16px;"></div><span class="space-name">--space-4 · 16</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 24px;"></div><span class="space-name">--space-5 · 24</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 32px;"></div><span class="space-name">--space-6 · 32</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 48px;"></div><span class="space-name">--space-7 · 48</span></div>
+          <div class="space-row"><div class="space-bar" style="width: 64px;"></div><span class="space-name">--space-8 · 64</span></div>
+        </div>
+
+        <!-- Radii -->
+        <div class="sg-block">
+          <h3>Radii</h3>
+          <div class="radius-row">
+            <div class="radius-demo" style="border-radius: var(--radius-sm);"></div>
+            <span class="space-name">--radius-sm · 8</span>
+          </div>
+          <div class="radius-row">
+            <div class="radius-demo" style="border-radius: var(--radius-md);"></div>
+            <span class="space-name">--radius-md · 12</span>
+          </div>
+          <div class="radius-row">
+            <div class="radius-demo" style="border-radius: var(--radius-lg);"></div>
+            <span class="space-name">--radius-lg · 20</span>
+          </div>
+          <div class="radius-row">
+            <div class="radius-demo" style="border-radius: var(--radius-pill); width: 60px;"></div>
+            <span class="space-name">--radius-pill · ∞</span>
+          </div>
+        </div>
+
+        <!-- Components -->
+        <div class="sg-block">
+          <h3>Pills</h3>
+          <div class="component-stack">
+            <div class="demo-row">
+              <span class="pill success">Healthy</span>
+              <span class="pill warning">Due today</span>
+              <span class="pill danger">2 days late</span>
+              <span class="pill muted">v0.1.0</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Theme toggle — preview only, not part of the app
+    const buttons = document.querySelectorAll('[data-theme-set]');
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const mode = btn.dataset.themeSet;
+        if (mode === 'auto') {
+          document.documentElement.removeAttribute('data-theme');
+        } else {
+          document.documentElement.setAttribute('data-theme', mode);
+        }
+        buttons.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+      });
+    });
+  </script>
+</body>
+</html>
