@@ -14,7 +14,7 @@ Goal: Sync plants, rooms, and care_events to a personal Google Sheet via Google 
 
 ## Conventions
 
-- Current version: **v0.4.0**
+- Current version: **v0.4.1**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
 - Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.

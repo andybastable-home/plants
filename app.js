@@ -629,7 +629,16 @@ function renderPlantModal(opts, rooms) {
       <div class="modal-actions">
         <button class="btn btn-primary" id="modal-save-btn" type="button">${isEdit ? 'Save changes' : 'Add plant'}</button>
       </div>
-      ${isEdit ? '<div id="delete-area"><button class="btn btn-danger" id="modal-delete-btn" type="button">Delete plant</button></div>' : ''}
+      ${isEdit ? `
+        <div id="delete-area"><button class="btn btn-danger" id="modal-delete-btn" type="button">Delete plant</button></div>
+        <div id="dev-area">
+          <p class="dev-area-label">Testing</p>
+          <div class="dev-area-btns">
+            <button class="btn btn-ghost dev-btn" id="dev-water-btn" type="button">Water due today</button>
+            ${plant.feed_days ? '<button class="btn btn-ghost dev-btn" id="dev-feed-btn" type="button">Feed due today</button>' : ''}
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 
@@ -656,7 +665,27 @@ function renderPlantModal(opts, rooms) {
         renderPlants();
       });
     });
+
+    panel.querySelector('#dev-water-btn').addEventListener('click', async () => {
+      await markDueToday(plant.id, 'water', plant.water_days);
+    });
+    panel.querySelector('#dev-feed-btn')?.addEventListener('click', async () => {
+      await markDueToday(plant.id, 'feed', plant.feed_days);
+    });
   }
+}
+
+async function markDueToday(plant_id, kind, cadence) {
+  await db.care_events.where('plant_id').equals(plant_id).filter(e => e.kind === kind).delete();
+  await db.care_events.add({
+    uuid: crypto.randomUUID(),
+    plant_id,
+    kind,
+    timestamp: new Date(Date.now() - cadence * 86400000).toISOString(),
+  });
+  closeOverlay();
+  renderToday();
+  renderPlants();
 }
 
 function swapRoomSelectForInput(roomSection, rooms) {
