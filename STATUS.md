@@ -14,7 +14,7 @@ Goal: Populate the Today tab. For each plant, calculate days since last care eve
 
 ## Conventions
 
-- Current version: **v0.3.0**
+- Current version: **v0.3.1**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
 - Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.
