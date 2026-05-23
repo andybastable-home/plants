@@ -87,6 +87,28 @@ async function deletePlant(id) {
   return db.plants.delete(id);
 }
 
+async function logCareEvent(plant_id, kind) {
+  return db.care_events.add({
+    uuid: crypto.randomUUID(),
+    plant_id,
+    kind,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+async function getLastCareEventsMap() {
+  const events = await db.care_events.orderBy('timestamp').toArray();
+  const map = new Map();
+  for (const ev of events) {
+    const entry = map.get(ev.plant_id) || { water: null, feed: null };
+    const ts = new Date(ev.timestamp);
+    if (ev.kind === 'water' && (!entry.water || ts > entry.water)) entry.water = ts;
+    if (ev.kind === 'feed'  && (!entry.feed  || ts > entry.feed))  entry.feed  = ts;
+    map.set(ev.plant_id, entry);
+  }
+  return map;
+}
+
 async function addPlantWithNewRoom(plantFields, roomName) {
   return db.transaction('rw', db.rooms, db.plants, async () => {
     const maxOrderRoom = await db.rooms.orderBy('order').last();
@@ -95,6 +117,244 @@ async function addPlantWithNewRoom(plantFields, roomName) {
     const roomId = await db.rooms.add({ uuid: crypto.randomUUID(), name: roomName, order, created_at: now });
     await db.plants.add({ uuid: crypto.randomUUID(), created_at: now, ...plantFields, room_id: roomId });
   });
+}
+
+// ------------------------------------------------------------------
+// Due logic
+// ------------------------------------------------------------------
+function calendarDaysBetween(fromDate, toDate) {
+  const from = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+  const to   = new Date(toDate.getFullYear(),   toDate.getMonth(),   toDate.getDate());
+  return Math.round((to - from) / 86400000);
+}
+
+function dueStatus(plant, kind, lastEventDate, today) {
+  const cadence = kind === 'water' ? plant.water_days : plant.feed_days;
+  if (!cadence) return { status: 'na', daysSince: null, daysUntil: null, label: '' };
+
+  let daysSince;
+  let neverLogged = false;
+  if (lastEventDate) {
+    daysSince = calendarDaysBetween(lastEventDate, today);
+  } else {
+    neverLogged = true;
+    daysSince = calendarDaysBetween(new Date(plant.created_at), today);
+  }
+
+  const daysUntil = cadence - daysSince;
+
+  let status, label;
+  if (daysUntil < 0) {
+    status = 'overdue';
+    const late = Math.abs(daysUntil);
+    label = neverLogged ? `never ${kind}ed` : `${late} day${late !== 1 ? 's' : ''} late`;
+  } else if (daysUntil === 0) {
+    status = 'due';
+    label = neverLogged ? `never ${kind}ed` : 'due today';
+  } else {
+    status = 'future';
+    label = `in ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
+  }
+
+  return { status, daysSince, daysUntil, label };
+}
+
+// ------------------------------------------------------------------
+// Today tab — render
+// ------------------------------------------------------------------
+const WATER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l4.5 6.5a5.5 5.5 0 1 1-9 0z"/></svg>`;
+const FEED_SVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V11a5 5 0 0 1 10 0v10"/><path d="M12 11V3"/></svg>`;
+
+async function renderToday() {
+  const todayPane = document.querySelector('[data-pane="today"]');
+  const today = new Date();
+
+  const [plants, rooms, lastEventsMap] = await Promise.all([
+    getAllPlants(),
+    getRooms(),
+    getLastCareEventsMap(),
+  ]);
+
+  const roomsById = new Map(rooms.map(r => [r.id, r]));
+
+  // Compute statuses for each plant
+  const entries = plants.map(plant => {
+    const last = lastEventsMap.get(plant.id) || { water: null, feed: null };
+    const water = dueStatus(plant, 'water', last.water, today);
+    const feed  = dueStatus(plant, 'feed',  last.feed,  today);
+    return { plant, water, feed };
+  });
+
+  // Filter to plants with at least one due/overdue action
+  const due = entries.filter(e =>
+    e.water.status === 'due' || e.water.status === 'overdue' ||
+    e.feed.status  === 'due' || e.feed.status  === 'overdue'
+  );
+
+  // Sort: overdue first (by urgency desc), then due (by name)
+  due.sort((a, b) => {
+    const aWorst = worstUrgency(a);
+    const bWorst = worstUrgency(b);
+    if (aWorst !== bWorst) return bWorst - aWorst; // more urgent first
+    return (a.plant.name || '').localeCompare(b.plant.name || '');
+  });
+
+  // Count action buttons
+  let totalActions = 0;
+  let overdueActions = 0;
+  for (const e of due) {
+    if (e.water.status === 'due' || e.water.status === 'overdue') {
+      totalActions++;
+      if (e.water.status === 'overdue') overdueActions++;
+    }
+    if (e.feed.status === 'due' || e.feed.status === 'overdue') {
+      totalActions++;
+      if (e.feed.status === 'overdue') overdueActions++;
+    }
+  }
+
+  todayPane.innerHTML = '';
+
+  // Headline
+  const headline = document.createElement('div');
+  headline.className = 'today-headline';
+  const dateStr = today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const metaStr = due.length === 0
+    ? 'All caught up'
+    : `<strong>${totalActions}</strong> task${totalActions !== 1 ? 's' : ''} today${overdueActions > 0 ? ` &middot; <strong>${overdueActions}</strong> overdue` : ''}`;
+  headline.innerHTML = `
+    <h1 class="today-headline-date">${escHtml(dateStr)}</h1>
+    <p class="today-headline-meta">${metaStr}</p>
+  `;
+  todayPane.appendChild(headline);
+
+  if (due.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'placeholder';
+    empty.textContent = 'Nothing due today 🌱';
+    todayPane.appendChild(empty);
+    return;
+  }
+
+  for (const entry of due) {
+    todayPane.appendChild(buildPlantCard(entry, roomsById));
+  }
+
+  // Spacer so last card scrolls above nav
+  const spacer = document.createElement('div');
+  spacer.style.height = '32px';
+  spacer.setAttribute('aria-hidden', 'true');
+  todayPane.appendChild(spacer);
+}
+
+function worstUrgency(entry) {
+  // Higher = more urgent. overdue beats due; more days overdue beats fewer.
+  let score = 0;
+  for (const kind of ['water', 'feed']) {
+    const s = entry[kind];
+    if (s.status === 'overdue') score = Math.max(score, 1000 + (s.daysSince - (kind === 'water' ? entry.plant.water_days : entry.plant.feed_days)));
+    else if (s.status === 'due') score = Math.max(score, 1);
+  }
+  return score;
+}
+
+function buildPlantCard(entry, roomsById) {
+  const { plant, water, feed } = entry;
+  const room = roomsById.get(plant.room_id);
+
+  const article = document.createElement('article');
+  const cardOverdue = water.status === 'overdue' || feed.status === 'overdue';
+  article.className = 'plant-card' + (cardOverdue ? ' is-overdue' : '');
+
+  // Card head
+  const head = document.createElement('div');
+  head.className = 'plant-card-head';
+
+  const emojiSpan = document.createElement('span');
+  emojiSpan.className = 'plant-emoji';
+  emojiSpan.textContent = plant.emoji || '🌱';
+
+  const titles = document.createElement('div');
+  titles.className = 'plant-titles';
+  const nameEl = document.createElement('h2');
+  nameEl.className = 'plant-name';
+  nameEl.textContent = plant.name;
+  if (plant.quantity > 1) {
+    const qty = document.createElement('span');
+    qty.className = 'qty';
+    qty.textContent = `×${plant.quantity}`;
+    nameEl.appendChild(document.createTextNode(' '));
+    nameEl.appendChild(qty);
+  }
+  const metaEl = document.createElement('p');
+  metaEl.className = 'plant-meta';
+  const roomName = room ? room.name : '';
+  metaEl.textContent = `${roomName} · water every ${plant.water_days}d`;
+
+  titles.appendChild(nameEl);
+  titles.appendChild(metaEl);
+
+  // Best status pill (water wins if both active)
+  const pillStatus = water.status === 'overdue' || water.status === 'due' ? water.status : feed.status;
+  const pillLabel  = water.status === 'overdue' || water.status === 'due' ? water.label : feed.label;
+  const pill = document.createElement('span');
+  pill.className = `status-pill is-${pillStatus}`;
+  pill.textContent = pillLabel;
+
+  head.appendChild(emojiSpan);
+  head.appendChild(titles);
+  head.appendChild(pill);
+  article.appendChild(head);
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'plant-actions';
+
+  if (water.status !== 'na') {
+    actions.appendChild(buildActionBtn('water', water, plant, article));
+  }
+  if (feed.status !== 'na') {
+    actions.appendChild(buildActionBtn('feed', feed, plant, article));
+  }
+
+  article.appendChild(actions);
+  return article;
+}
+
+function buildActionBtn(kind, statusObj, plant, cardEl) {
+  const btn = document.createElement('button');
+  btn.className = `action-btn is-${statusObj.status}`;
+  btn.type = 'button';
+
+  const row = document.createElement('span');
+  row.className = 'action-btn-row';
+  row.innerHTML = kind === 'water' ? WATER_SVG : FEED_SVG;
+
+  const labelText = kind === 'water' ? 'Water' : (plant.feed_label ? `Feed (${plant.feed_label})` : 'Feed');
+  row.appendChild(document.createTextNode(` ${labelText}`));
+
+  const sub = document.createElement('span');
+  sub.className = 'action-btn-status';
+  if (statusObj.status === 'overdue' || statusObj.status === 'due') {
+    sub.textContent = `${statusObj.label} · tap to log`;
+  } else {
+    sub.textContent = statusObj.label;
+  }
+
+  btn.appendChild(row);
+  btn.appendChild(sub);
+
+  if (statusObj.status === 'overdue' || statusObj.status === 'due') {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      btn.disabled = true;
+      await logCareEvent(plant.id, kind);
+      renderToday();
+      renderPlants();
+    });
+  }
+
+  return btn;
 }
 
 // ------------------------------------------------------------------
@@ -109,6 +369,7 @@ function setTab(tab) {
     pane.hidden = pane.dataset.pane !== tab;
   });
   if (tab === 'plants') renderPlants();
+  if (tab === 'today')  renderToday();
 }
 
 // ------------------------------------------------------------------
@@ -116,7 +377,7 @@ function setTab(tab) {
 // ------------------------------------------------------------------
 async function renderPlants() {
   const pane = els.plantsPane;
-  const [rooms, allPlants] = await Promise.all([getRooms(), getAllPlants()]);
+  const [rooms, allPlants, lastEventsMap] = await Promise.all([getRooms(), getAllPlants(), getLastCareEventsMap()]);
 
   pane.innerHTML = '';
 
@@ -133,7 +394,7 @@ async function renderPlants() {
 
   for (const room of rooms) {
     const plants = await getPlants(room.id);
-    pane.appendChild(buildRoomSection(room, plants));
+    pane.appendChild(buildRoomSection(room, plants, lastEventsMap));
   }
 
   // Spacer so the last room scrolls above the FAB
@@ -151,7 +412,7 @@ async function renderPlants() {
   pane.appendChild(fab);
 }
 
-function buildRoomSection(room, plants) {
+function buildRoomSection(room, plants, lastEventsMap) {
   const section = document.createElement('section');
   section.className = 'room';
 
@@ -172,13 +433,14 @@ function buildRoomSection(room, plants) {
   const list = document.createElement('ul');
   list.className = 'plant-list';
   for (const plant of plants) {
-    list.appendChild(buildPlantRow(plant));
+    const lastEvents = lastEventsMap ? (lastEventsMap.get(plant.id) || { water: null, feed: null }) : { water: null, feed: null };
+    list.appendChild(buildPlantRow(plant, lastEvents));
   }
   section.appendChild(list);
   return section;
 }
 
-function buildPlantRow(plant) {
+function buildPlantRow(plant, lastEvents) {
   const li = document.createElement('li');
   li.className = 'plant-row';
 
@@ -195,10 +457,18 @@ function buildPlantRow(plant) {
       <h4 class="plant-row-name">${escHtml(plant.name)}${qty}</h4>
       <p class="plant-row-schedule">${schedule}</p>
     </div>
-    <span class="plant-row-meta"></span>
+    <span class="plant-row-meta">${lastWateredLabel(lastEvents && lastEvents.water)}</span>
   `;
   li.addEventListener('click', () => openEditModal(plant));
   return li;
+}
+
+function lastWateredLabel(waterDate) {
+  if (!waterDate) return 'never';
+  const today = new Date();
+  const days = calendarDaysBetween(waterDate, today);
+  if (days === 0) return 'today';
+  return `${days}d ago`;
 }
 
 function escHtml(str) {

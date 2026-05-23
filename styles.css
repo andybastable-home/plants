@@ -630,6 +630,33 @@ textarea.ai-config-input { resize: vertical; }
 .modal-actions .btn { width: 100%; }
 
 /* ============================================================
+   Today tab — headline
+   ============================================================ */
+.today-headline {
+  padding: 0 var(--space-2);
+}
+.today-headline-date {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 28px;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0;
+  font-variation-settings: "opsz" 48;
+  color: var(--color-text);
+}
+.today-headline-meta {
+  margin: var(--space-1) 0 0;
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  letter-spacing: 0.005em;
+}
+.today-headline-meta strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* ============================================================
    Footer
    ============================================================ */
 .app-footer {
