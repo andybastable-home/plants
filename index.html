@@ -24,7 +24,7 @@
         </svg>
       </span>
       <span class="brand-name">Plants</span>
-      <span class="brand-version" aria-label="App version">v0.2.0</span>
+      <span class="brand-version" aria-label="App version">v0.3.0</span>
     </div>
     <div class="header-actions">
       <button id="settings-btn" class="settings-btn" type="button" aria-label="Settings">
@@ -47,7 +47,7 @@
       <p class="placeholder">Today&rsquo;s tasks will live here.</p>
     </section>
     <section class="tab-pane" data-pane="plants" hidden>
-      <p class="placeholder">Rooms and plants will live here.</p>
+      <!-- filled by app.js renderPlants() -->
     </section>
     <section class="tab-pane" data-pane="settings" hidden>
       <p class="placeholder">Settings will live here.</p>
@@ -55,9 +55,17 @@
   </main>
 
   <footer class="app-footer">
-    <span>v0.2.0 &middot; offline-ready</span>
+    <span>v0.3.0 &middot; offline-ready</span>
   </footer>
 
+  <!-- Plant modal overlay — content filled by app.js -->
+  <div class="settings-overlay" id="plant-overlay" hidden>
+    <div class="settings-panel" id="plant-overlay-panel" role="dialog" aria-modal="true" aria-label="Plant details">
+      <!-- filled by app.js -->
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/dexie@4.4.2/dist/dexie.min.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
