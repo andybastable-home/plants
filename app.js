@@ -259,13 +259,16 @@ function renderRoomEditModal(room, _rooms) {
     <div class="settings-header">
       <button class="btn btn-ghost" id="modal-close-btn" type="button">Close</button>
       <h2 class="modal-title">Edit room</h2>
-      <button class="btn btn-primary" id="modal-save-btn" type="button">Save</button>
+      <div class="modal-header-spacer" aria-hidden="true"></div>
     </div>
     <div class="settings-body">
       <div class="ai-config-section">
         <label class="ai-config-label" for="field-room-name">Room name</label>
         <input class="ai-config-input" id="field-room-name" type="text" value="${escHtml(room.name)}" maxlength="60" autocomplete="off">
         <p class="field-error" id="field-room-name-error" hidden></p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="modal-save-btn" type="button">Save</button>
       </div>
       <div id="delete-area">
         <button class="btn btn-danger" id="modal-delete-btn" type="button">Delete room</button>
@@ -312,7 +315,7 @@ function renderPlantModal(opts, rooms) {
     <div class="settings-header">
       <button class="btn btn-ghost" id="modal-close-btn" type="button">Close</button>
       <h2 class="modal-title">${title}</h2>
-      <button class="btn btn-primary" id="modal-save-btn" type="button">${isEdit ? 'Save' : 'Add'}</button>
+      <div class="modal-header-spacer" aria-hidden="true"></div>
     </div>
     <div class="settings-body">
       <div class="ai-config-section">
@@ -352,6 +355,9 @@ function renderPlantModal(opts, rooms) {
       <div class="ai-config-section">
         <label class="ai-config-label" for="field-notes">Notes <span class="ai-config-hint">optional</span></label>
         <textarea class="ai-config-input" id="field-notes" rows="3">${escHtml(plant.notes || '')}</textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="modal-save-btn" type="button">${isEdit ? 'Save changes' : 'Add plant'}</button>
       </div>
       ${isEdit ? '<div id="delete-area"><button class="btn btn-danger" id="modal-delete-btn" type="button">Delete plant</button></div>' : ''}
     </div>

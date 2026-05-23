@@ -626,6 +626,8 @@ textarea.ai-config-input { resize: vertical; }
 .btn-danger:active { background: var(--color-danger-soft); }
 
 .delete-confirm-row { display: flex; gap: var(--space-3); align-items: center; }
+.modal-header-spacer { min-width: 72px; }
+.modal-actions .btn { width: 100%; }
 
 /* ============================================================
    Footer
