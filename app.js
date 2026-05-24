@@ -141,8 +141,8 @@ async function addPlantWithNewRoom(plantFields, roomName) {
 function getGeminiKey() { return (localStorage.getItem('plants.geminiKey') || '').trim(); }
 function getAiContext() { return (localStorage.getItem('plants.aiContext') || '').trim(); }
 
-// gemini-3-flash primary; falls through to 2.5-flash on quota (429/403) or unavailable (404/400).
-const AUTOFILL_MODELS = ['gemini-3-flash', 'gemini-2.5-flash'];
+// gemini-3.5-flash primary; falls through to 2.5-flash on quota (429/403) or unavailable (404/400).
+const AUTOFILL_MODELS = ['gemini-3.5-flash', 'gemini-2.5-flash'];
 
 async function fileToResizedJpegBase64(file, maxEdge = 1024, quality = 0.85) {
   if (!file || !file.type.startsWith('image/')) throw new Error('not an image');
