@@ -8,10 +8,10 @@ const BACKUP_PENDING_KEY = 'plants.backupPending';
 // Token cached in sessionStorage so SW-triggered reloads don't re-fire the silent OAuth flow.
 const TOKEN_CACHE_KEY   = 'plants.sync.token';
 
-const SHEET_SCHEMA_VERSION = 1;
+const SHEET_SCHEMA_VERSION = 2;
 
 const ROOMS_HEADER       = ['uuid', 'name', 'order', 'created_at'];
-const PLANTS_HEADER      = ['uuid', 'room_uuid', 'name', 'emoji', 'quantity', 'water_days', 'feed_days', 'feed_label', 'notes', 'created_at'];
+const PLANTS_HEADER      = ['uuid', 'room_uuid', 'name', 'emoji', 'quantity', 'water_days', 'feed_days', 'feed_label', 'notes', 'created_at', 'ai_prompt'];
 const CARE_EVENTS_HEADER = ['uuid', 'plant_uuid', 'kind', 'timestamp'];
 
 let tokenClient    = null;
@@ -253,6 +253,7 @@ async function backupToSheet() {
       p.feed_label || '',
       p.notes || '',
       p.created_at,
+      p.ai_prompt || '',
     ]);
     const careRows = careEvents.map(e => [
       e.uuid,
@@ -279,13 +280,14 @@ async function backupToSheet() {
     await replaceTab('CareEvents', CARE_EVENTS_HEADER, careRows);
 
     await apiCall(
-      `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Metadata!A1:B2?valueInputOption=RAW`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Metadata!A1:B3?valueInputOption=RAW`,
       {
         method: 'PUT',
         body: JSON.stringify({
           values: [
             ['schema_version', SHEET_SCHEMA_VERSION],
             ['last_backup_at', now],
+            ['ai_context', (localStorage.getItem('plants.aiContext') || '').trim()],
           ],
         }),
       }
@@ -321,11 +323,19 @@ async function restoreFromSheet() {
     await ensureFreshToken();
     const sid = getSheetId();
 
-    const [roomsData, plantsData, careData] = await Promise.all([
+    const [roomsData, plantsData, careData, metaData] = await Promise.all([
       apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Rooms!A:Z`),
       apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Plants!A:Z`),
       apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/CareEvents!A:Z`),
+      apiCall(`https://sheets.googleapis.com/v4/spreadsheets/${sid}/values/Metadata!A:B`),
     ]);
+
+    const aiContextRow = (metaData.values || []).find(r => r[0] === 'ai_context');
+    if (aiContextRow) {
+      localStorage.setItem('plants.aiContext', aiContextRow[1] || '');
+      const ctxEl = document.getElementById('cfg-ai-context');
+      if (ctxEl) ctxEl.value = aiContextRow[1] || '';
+    }
 
     const roomRows  = (roomsData.values  || []).slice(1);
     const plantRows = (plantsData.values || []).slice(1);
@@ -353,7 +363,7 @@ async function restoreFromSheet() {
       }
 
       for (const row of plantRows) {
-        const [uuid, room_uuid, name, emoji, quantity, water_days, feed_days, feed_label, notes, created_at] = row;
+        const [uuid, room_uuid, name, emoji, quantity, water_days, feed_days, feed_label, notes, created_at, ai_prompt] = row;
         if (!uuid) continue;
         const room_id = roomUuidToId.get(room_uuid);
         if (room_id == null) continue;
@@ -368,6 +378,7 @@ async function restoreFromSheet() {
           feed_label: feed_label || null,
           notes: notes || null,
           created_at: created_at || now,
+          ai_prompt: ai_prompt || null,
         });
         plantUuidToId.set(uuid, id);
       }
@@ -507,6 +518,25 @@ function bindSyncUI() {
   if (syncUI.backup)  syncUI.backup.addEventListener('click',  actionBackup);
   if (syncUI.restore) syncUI.restore.addEventListener('click', actionRestore);
   if (syncUI.forget)  syncUI.forget.addEventListener('click',  actionForget);
+
+  const keyEl = document.getElementById('cfg-gemini-key');
+  if (keyEl) {
+    keyEl.value = localStorage.getItem('plants.geminiKey') || '';
+    const saveKey = () => localStorage.setItem('plants.geminiKey', keyEl.value.trim());
+    keyEl.addEventListener('change', saveKey);
+    keyEl.addEventListener('blur', saveKey);
+  }
+
+  const ctxEl = document.getElementById('cfg-ai-context');
+  if (ctxEl) {
+    ctxEl.value = localStorage.getItem('plants.aiContext') || '';
+    const saveCtx = () => {
+      localStorage.setItem('plants.aiContext', ctxEl.value.trim());
+      window.scheduleBackup?.();
+    };
+    ctxEl.addEventListener('change', saveCtx);
+    ctxEl.addEventListener('blur', saveCtx);
+  }
 }
 
 function initOnLoad() {

@@ -2,19 +2,21 @@
 
 ## Current phase
 
-**Phase 5 — Gemini text classification** (not started)
+**Phase 6 — Gemini image classification (vision)** (not started)
 
-Goal: Use Gemini to classify free-text plant-care notes / add intelligent suggestions.
+Goal: Photograph a plant and have Gemini identify it + fill the maintenance fields, building on the Phase 5 text autofill.
+
+Phase 5 (Gemini text autofill) is done in v0.6.0: prompt box + ✨ Generate in the plant modal fills name/emoji/water/feed/label/notes; `ai_prompt` saved per plant and synced; `plants.geminiKey` local-only, `plants.aiContext` synced via Metadata.
 
 ## Next 2-3 steps
 
-1. Review `notes/phase-5.md` (or design note) for the Gemini integration plan.
-2. Implement Gemini API call in a new helper (or extend `sync.js`).
-3. Wire a text-input field in the plant modal to suggest feed labels / care notes.
+1. Reuse `requestPlantAutofill` shape; add an image part to the Gemini `contents` request.
+2. Add a camera/file-picker control to the plant modal (touch-first, near the prompt box).
+3. Decide image handling: send inline base64 vs. resize first (Pixel 8a perf / free quota).
 
 ## Conventions
 
-- Current version: **v0.5.1**
+- Current version: **v0.6.0**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
 - Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.

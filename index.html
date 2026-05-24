@@ -24,7 +24,7 @@
         </svg>
       </span>
       <span class="brand-name">Plants</span>
-      <span class="brand-version" aria-label="App version">v0.5.1</span>
+      <span class="brand-version" aria-label="App version">v0.6.0</span>
     </div>
     <div class="header-actions">
       <button id="settings-btn" class="settings-btn" type="button" aria-label="Settings">
@@ -52,7 +52,7 @@
   </main>
 
   <footer class="app-footer">
-    <span>v0.5.1 &middot; offline-ready</span>
+    <span>v0.6.0 &middot; offline-ready</span>
   </footer>
 
   <!-- Plant modal overlay — content filled by app.js -->
@@ -74,6 +74,16 @@
         </button>
       </div>
       <div class="settings-body">
+        <h2 class="modal-title" style="text-align:left;">AI</h2>
+        <div class="ai-config-section">
+          <label class="ai-config-label" for="cfg-gemini-key">Gemini API key</label>
+          <input type="password" id="cfg-gemini-key" class="ai-config-input" autocomplete="off" placeholder="Paste your Gemini API key">
+        </div>
+        <div class="ai-config-section">
+          <label class="ai-config-label" for="cfg-ai-context">AI context</label>
+          <textarea id="cfg-ai-context" class="ai-config-input" rows="4" placeholder="House faces north; tap water is hard; I tend to underwater"></textarea>
+        </div>
+        <h2 class="modal-title" style="text-align:left;">Sheet</h2>
         <div class="ai-config-section">
           <label class="ai-config-label" for="sync-url">Sheet URL (leave blank to create new)</label>
           <input type="text" id="sync-url" class="ai-config-input" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off">

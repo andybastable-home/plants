@@ -136,6 +136,49 @@ async function addPlantWithNewRoom(plantFields, roomName) {
 }
 
 // ------------------------------------------------------------------
+// Gemini AI
+// ------------------------------------------------------------------
+function getGeminiKey() { return (localStorage.getItem('plants.geminiKey') || '').trim(); }
+function getAiContext() { return (localStorage.getItem('plants.aiContext') || '').trim(); }
+
+async function requestPlantAutofill(promptText, roomName) {
+  const apiKey = getGeminiKey();
+  if (!apiKey) throw new Error('No API key configured');
+
+  const prompt = `You are a houseplant-care assistant. Given a short description of a plant, return prettified details and sensible UK indoor care cadences.\n\n[AI CONTEXT]\n${getAiContext() || 'No standing context set.'}\n\n[ROOM]\n${roomName || 'unspecified'}\n\n[INPUT]\n${promptText}\n\nRespond with a JSON object matching this exact schema:\n{\n  "name": "<short prettified plant name>",\n  "emoji": "<single emoji that best characterises this plant — NOT limited to leaf/plant glyphs; e.g. 🦜 for a bird of paradise, 🌵 for a cactus, 🍃 for a trailing pothos>",\n  "water_days": <integer days>,\n  "feed_days": <integer days or null if it doesn't need feeding>,\n  "feed_label": "<the kind of feed, e.g. tomato feed, 4:4:4 liquid feed, ericaceous feed; empty if none>",\n  "notes": "<one or two short care lines: light, humidity, watering style>"\n}`;
+
+  const base = 'https://generativelanguage.googleapis.com/v1beta/models';
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json' },
+  });
+  const fetchModel = (model) => fetch(`${base}/${model}:generateContent?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
+
+  const isQuotaError = (status) => status === 429 || status === 403;
+
+  let res = await fetchModel('gemini-2.5-flash');
+  let modelUsed = 'gemini-2.5-flash';
+  if (isQuotaError(res.status)) {
+    console.warn(`[ai] ${modelUsed} quota hit (${res.status}), falling back to gemini-2.0-flash`);
+    res = await fetchModel('gemini-2.0-flash');
+    modelUsed = 'gemini-2.0-flash';
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API error ${res.status} (${modelUsed}): ${text.slice(0, 200)}`);
+  }
+
+  const data = await res.json();
+  const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!raw) throw new Error('Empty response from Gemini');
+  return JSON.parse(raw);
+}
+
+// ------------------------------------------------------------------
 // Due logic
 // ------------------------------------------------------------------
 function calendarDaysBetween(fromDate, toDate) {
@@ -605,6 +648,14 @@ function renderPlantModal(opts, rooms) {
     </div>
     <div class="settings-body">
       <div class="ai-config-section">
+        <label class="ai-config-label" for="field-ai-prompt">Describe it, let AI fill the rest</label>
+        <div class="ai-prompt-wrap">
+          <textarea class="ai-config-input" id="field-ai-prompt" rows="2" placeholder="medium calathea in a 20cm pot">${escHtml(plant.ai_prompt || '')}</textarea>
+          <button id="ai-generate-btn" class="ai-button" type="button" aria-label="Fill plant details with AI">&#10024;</button>
+        </div>
+        <p id="ai-status" class="sync-status" aria-live="polite"></p>
+      </div>
+      <div class="ai-config-section">
         <label class="ai-config-label" for="field-name">Name</label>
         <input class="ai-config-input" id="field-name" type="text" value="${escHtml(plant.name || '')}" maxlength="80" autocomplete="off">
         <p class="field-error" id="field-name-error" hidden></p>
@@ -672,6 +723,50 @@ function renderPlantModal(opts, rooms) {
 
   panel.querySelector('#modal-close-btn').addEventListener('click', closeOverlay);
   panel.querySelector('#modal-save-btn').addEventListener('click', () => savePlantModal(panel, isEdit, rooms));
+
+  const aiBtn    = panel.querySelector('#ai-generate-btn');
+  const aiStatus = panel.querySelector('#ai-status');
+  const setAiStatus = (text, tone) => {
+    aiStatus.textContent = text || '';
+    aiStatus.classList.remove('is-info', 'is-error', 'is-ok');
+    if (tone) aiStatus.classList.add(`is-${tone}`);
+  };
+  aiBtn.addEventListener('click', async () => {
+    const promptText = panel.querySelector('#field-ai-prompt').value.trim();
+    if (!promptText) { setAiStatus('Describe the plant first.', 'error'); return; }
+
+    const roomNewEl    = panel.querySelector('#field-room-new');
+    const roomSelectEl = panel.querySelector('#field-room');
+    let roomName = 'unspecified';
+    if (roomNewEl) {
+      roomName = roomNewEl.value.trim() || 'unspecified';
+    } else if (roomSelectEl) {
+      const room = rooms.find(r => String(r.id) === roomSelectEl.value);
+      if (room) roomName = room.name;
+    }
+
+    aiBtn.disabled = true;
+    aiBtn.textContent = '⏳';
+    setAiStatus('Generating…', 'info');
+    try {
+      const result = await requestPlantAutofill(promptText, roomName);
+      if (result.name != null)  panel.querySelector('#field-name').value  = result.name;
+      if (result.emoji)         panel.querySelector('#field-emoji').value = result.emoji;
+      if (result.water_days != null) panel.querySelector('#field-water-days').value = result.water_days;
+      panel.querySelector('#field-feed-days').value  = result.feed_days != null ? result.feed_days : '';
+      panel.querySelector('#field-feed-label').value = result.feed_label || '';
+      panel.querySelector('#field-notes').value      = result.notes || '';
+      setAiStatus('Filled — review and save.', 'ok');
+    } catch (err) {
+      const msg = /No API key/.test(err.message)
+        ? 'Set your Gemini key in Settings.'
+        : `Couldn't generate: ${err.message.slice(0, 80)}`;
+      setAiStatus(msg, 'error');
+    } finally {
+      aiBtn.disabled = false;
+      aiBtn.textContent = '✨';
+    }
+  });
 
   if (isEdit) {
     panel.querySelector('#modal-delete-btn').addEventListener('click', () => {
@@ -748,6 +843,7 @@ async function savePlantModal(panel, isEdit, rooms) {
   const feedEl      = panel.querySelector('#field-feed-days');
   const feedLabelEl = panel.querySelector('#field-feed-label');
   const notesEl     = panel.querySelector('#field-notes');
+  const aiPromptEl  = panel.querySelector('#field-ai-prompt');
 
   const nameErrEl  = panel.querySelector('#field-name-error');
   const waterErrEl = panel.querySelector('#field-water-days-error');
@@ -767,6 +863,7 @@ async function savePlantModal(panel, isEdit, rooms) {
   const feed_days  = parseInt(feedEl.value, 10) || null;
   const feed_label = feedLabelEl.value.trim() || null;
   const notes      = notesEl.value.trim() || null;
+  const ai_prompt  = aiPromptEl.value.trim() || null;
 
   const roomNewEl    = panel.querySelector('#field-room-new');
   const roomSelectEl = panel.querySelector('#field-room');
@@ -775,7 +872,7 @@ async function savePlantModal(panel, isEdit, rooms) {
     const roomName = roomNewEl.value.trim();
     if (!roomName) { showFieldError(roomErrEl, 'Enter a room name.'); roomNewEl.focus(); return; }
     hideFieldError(roomErrEl);
-    const fields = { name, emoji, quantity, water_days, feed_days, feed_label, notes };
+    const fields = { name, emoji, quantity, water_days, feed_days, feed_label, notes, ai_prompt };
     if (isEdit) {
       const newRoomId = await addRoom(roomName);
       await updatePlant(editingId, { ...fields, room_id: newRoomId });
@@ -786,7 +883,7 @@ async function savePlantModal(panel, isEdit, rooms) {
     const room_id = parseInt(roomSelectEl.value, 10);
     if (isNaN(room_id)) { showFieldError(roomErrEl, 'Select a room.'); return; }
     hideFieldError(roomErrEl);
-    const fields = { name, emoji, quantity, water_days, feed_days, feed_label, notes, room_id };
+    const fields = { name, emoji, quantity, water_days, feed_days, feed_label, notes, ai_prompt, room_id };
     if (isEdit) {
       await updatePlant(editingId, fields);
     } else {
