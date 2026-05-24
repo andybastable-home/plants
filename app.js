@@ -141,15 +141,50 @@ async function addPlantWithNewRoom(plantFields, roomName) {
 function getGeminiKey() { return (localStorage.getItem('plants.geminiKey') || '').trim(); }
 function getAiContext() { return (localStorage.getItem('plants.aiContext') || '').trim(); }
 
-async function requestPlantAutofill(promptText, roomName) {
+const CAMERA_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
+
+// gemini-3-flash primary; falls through to 2.5-flash on quota (429/403) or unavailable (404/400).
+const AUTOFILL_MODELS = ['gemini-3-flash', 'gemini-2.5-flash'];
+
+async function fileToResizedJpegBase64(file, maxEdge = 1024, quality = 0.85) {
+  if (!file || !file.type.startsWith('image/')) throw new Error('not an image');
+  if (file.size > 8 * 1024 * 1024) throw new Error('image too large (max 8MB)');
+
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('could not read file'));
+    reader.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload  = () => resolve(im);
+    im.onerror = () => reject(new Error('could not decode image'));
+    im.src = dataUrl;
+  });
+
+  const scale  = Math.min(1, maxEdge / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width  = Math.round(img.width  * scale);
+  canvas.height = Math.round(img.height * scale);
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  const out = canvas.toDataURL('image/jpeg', quality);
+  return out.slice(out.indexOf(',') + 1);
+}
+
+async function requestPlantAutofill(promptText, roomName, photoBase64) {
   const apiKey = getGeminiKey();
   if (!apiKey) throw new Error('No API key configured');
 
-  const prompt = `You are a houseplant-care assistant. Given a short description of a plant, return prettified details and sensible UK indoor care cadences.\n\n[AI CONTEXT]\n${getAiContext() || 'No standing context set.'}\n\n[ROOM]\n${roomName || 'unspecified'}\n\n[INPUT]\n${promptText}\n\nRespond with a JSON object matching this exact schema:\n{\n  "name": "<short prettified plant name>",\n  "emoji": "<single emoji that best characterises this plant — NOT limited to leaf/plant glyphs; e.g. 🦜 for a bird of paradise, 🌵 for a cactus, 🍃 for a trailing pothos>",\n  "water_days": <integer days>,\n  "feed_days": <integer days or null if it doesn't need feeding>,\n  "feed_label": "<the kind of feed, e.g. tomato feed, 4:4:4 liquid feed, ericaceous feed; empty if none>",\n  "notes": "<one or two short care lines: light, humidity, watering style>"\n}`;
+  const inputLine = promptText || '(no text — identify from the attached photo)';
+  const prompt = `You are a houseplant-care assistant. Given a description and/or photo of a plant, return prettified details and sensible UK indoor care cadences. If a photo of the plant is attached, identify the species from it as the primary signal and treat the text as extra detail.\n\n[AI CONTEXT]\n${getAiContext() || 'No standing context set.'}\n\n[ROOM]\n${roomName || 'unspecified'}\n\n[INPUT]\n${inputLine}\n\nRespond with a JSON object matching this exact schema:\n{\n  "name": "<short prettified plant name>",\n  "emoji": "<single emoji that best characterises this plant — NOT limited to leaf/plant glyphs; e.g. 🦜 for a bird of paradise, 🌵 for a cactus, 🍃 for a trailing pothos>",\n  "water_days": <integer days>,\n  "feed_days": <integer days or null if it doesn't need feeding>,\n  "feed_label": "<the kind of feed, e.g. tomato feed, 4:4:4 liquid feed, ericaceous feed; empty if none>",\n  "notes": "<one or two short care lines: light, humidity, watering style>",\n  "confidence": "<one of: Excellent, Moderate, Low>",\n  "reasoning": "<one short sentence: what the plant is and why these care figures>"\n}`;
+
+  const parts = [{ text: prompt }];
+  if (photoBase64) parts.push({ inline_data: { mime_type: 'image/jpeg', data: photoBase64 } });
 
   const base = 'https://generativelanguage.googleapis.com/v1beta/models';
   const body = JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }],
+    contents: [{ parts }],
     generationConfig: { responseMimeType: 'application/json' },
   });
   const fetchModel = (model) => fetch(`${base}/${model}:generateContent?key=${apiKey}`, {
@@ -158,14 +193,14 @@ async function requestPlantAutofill(promptText, roomName) {
     body,
   });
 
-  const isQuotaError = (status) => status === 429 || status === 403;
+  const shouldFallback = (status) => status === 429 || status === 403 || status === 404 || status === 400;
 
-  let res = await fetchModel('gemini-2.5-flash');
-  let modelUsed = 'gemini-2.5-flash';
-  if (isQuotaError(res.status)) {
-    console.warn(`[ai] ${modelUsed} quota hit (${res.status}), falling back to gemini-2.0-flash`);
-    res = await fetchModel('gemini-2.0-flash');
-    modelUsed = 'gemini-2.0-flash';
+  let res, modelUsed;
+  for (const model of AUTOFILL_MODELS) {
+    modelUsed = model;
+    res = await fetchModel(model);
+    if (res.ok || !shouldFallback(res.status)) break;
+    console.warn(`[ai] ${model} unavailable (${res.status}), trying next model`);
   }
   if (!res.ok) {
     const text = await res.text();
@@ -653,6 +688,11 @@ function renderPlantModal(opts, rooms) {
           <textarea class="ai-config-input" id="field-ai-prompt" rows="2" placeholder="medium calathea in a 20cm pot">${escHtml(plant.ai_prompt || '')}</textarea>
           <button id="ai-generate-btn" class="ai-button" type="button" aria-label="Fill plant details with AI">&#10024;</button>
         </div>
+        <div class="ai-photo-row">
+          <button id="ai-photo-btn" class="btn btn-ghost" type="button">${CAMERA_SVG} Photo</button>
+          <input id="ai-photo-input" type="file" accept="image/*" hidden>
+          <span id="ai-photo-preview" hidden><img class="ai-photo-thumb" alt="Plant photo"> <button id="ai-photo-clear" class="btn btn-ghost" type="button" aria-label="Remove photo">✕</button></span>
+        </div>
         <p id="ai-status" class="sync-status" aria-live="polite"></p>
       </div>
       <div class="ai-config-section">
@@ -731,9 +771,35 @@ function renderPlantModal(opts, rooms) {
     aiStatus.classList.remove('is-info', 'is-error', 'is-ok');
     if (tone) aiStatus.classList.add(`is-${tone}`);
   };
+
+  let pendingPhotoBase64 = null;
+  const photoBtn     = panel.querySelector('#ai-photo-btn');
+  const photoInput   = panel.querySelector('#ai-photo-input');
+  const photoPreview = panel.querySelector('#ai-photo-preview');
+  const photoThumb   = photoPreview.querySelector('.ai-photo-thumb');
+  const photoClear   = panel.querySelector('#ai-photo-clear');
+  photoBtn.addEventListener('click', () => photoInput.click());
+  photoInput.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    try {
+      pendingPhotoBase64 = await fileToResizedJpegBase64(file);
+      photoThumb.src = `data:image/jpeg;base64,${pendingPhotoBase64}`;
+      photoPreview.hidden = false;
+      setAiStatus('Photo attached.', 'info');
+    } catch (err) {
+      setAiStatus(`Couldn't use that photo: ${err.message}`, 'error');
+    }
+  });
+  photoClear.addEventListener('click', () => {
+    pendingPhotoBase64 = null;
+    photoInput.value = '';
+    photoPreview.hidden = true;
+  });
+
   aiBtn.addEventListener('click', async () => {
     const promptText = panel.querySelector('#field-ai-prompt').value.trim();
-    if (!promptText) { setAiStatus('Describe the plant first.', 'error'); return; }
+    if (!promptText && !pendingPhotoBase64) { setAiStatus('Describe the plant or add a photo.', 'error'); return; }
 
     const roomNewEl    = panel.querySelector('#field-room-new');
     const roomSelectEl = panel.querySelector('#field-room');
@@ -749,14 +815,15 @@ function renderPlantModal(opts, rooms) {
     aiBtn.textContent = '⏳';
     setAiStatus('Generating…', 'info');
     try {
-      const result = await requestPlantAutofill(promptText, roomName);
+      const result = await requestPlantAutofill(promptText, roomName, pendingPhotoBase64);
       if (result.name != null)  panel.querySelector('#field-name').value  = result.name;
       if (result.emoji)         panel.querySelector('#field-emoji').value = result.emoji;
       if (result.water_days != null) panel.querySelector('#field-water-days').value = result.water_days;
       panel.querySelector('#field-feed-days').value  = result.feed_days != null ? result.feed_days : '';
       panel.querySelector('#field-feed-label').value = result.feed_label || '';
       panel.querySelector('#field-notes').value      = result.notes || '';
-      setAiStatus('Filled — review and save.', 'ok');
+      const summary = [result.confidence, result.reasoning].filter(Boolean).join(' — ');
+      setAiStatus(summary ? `✨ ${summary}` : 'Filled — review and save.', result.confidence === 'Low' ? 'info' : 'ok');
     } catch (err) {
       const msg = /No API key/.test(err.message)
         ? 'Set your Gemini key in Settings.'

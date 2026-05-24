@@ -2,21 +2,21 @@
 
 ## Current phase
 
-**Phase 6 — Gemini image classification (vision)** (not started)
+**Phase 7 — Daily push notification** (not started)
 
-Goal: Photograph a plant and have Gemini identify it + fill the maintenance fields, building on the Phase 5 text autofill.
+Goal: A daily local/push notification reminding Andy what's due (water/feed) on his Pixel 8a PWA.
 
-Phase 5 (Gemini text autofill) is done in v0.6.0: prompt box + ✨ Generate in the plant modal fills name/emoji/water/feed/label/notes; `ai_prompt` saved per plant and synced; `plants.geminiKey` local-only, `plants.aiContext` synced via Metadata.
+Phase 6 (Gemini vision) is done in v0.7.0: the plant modal's ✨ autofill now accepts a single photo (camera/gallery picker, resized to 1024px JPEG, sent as `inline_data`, not saved/synced) and shows a confidence + reasoning status line. Model switched to `gemini-3-flash` (falls back to `gemini-2.5-flash` on quota/unavailable).
 
 ## Next 2-3 steps
 
-1. Reuse `requestPlantAutofill` shape; add an image part to the Gemini `contents` request.
-2. Add a camera/file-picker control to the plant modal (touch-first, near the prompt box).
-3. Decide image handling: send inline base64 vs. resize first (Pixel 8a perf / free quota).
+1. Review the PWA notification options (Notification API + service worker; Android PWA supports scheduled/periodic where available, else a daily check on launch).
+2. Decide trigger: periodic background sync vs. a server-free local schedule (no paid push service — free constraint).
+3. Wire the "what's due today" summary (reuse `dueStatus`/`renderToday` logic) into the notification body.
 
 ## Conventions
 
-- Current version: **v0.6.0**
+- Current version: **v0.7.0**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
 - Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.
