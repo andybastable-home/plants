@@ -6,7 +6,7 @@
 
 Goal: A daily local/push notification reminding Andy what's due (water/feed) on his Pixel 8a PWA.
 
-Phase 6 (Gemini vision) is done in v0.7.0: the plant modal's ✨ autofill now accepts a single photo (camera/gallery picker, resized to 1024px JPEG, sent as `inline_data`, not saved/synced) and shows a confidence + reasoning status line. Model switched to `gemini-3-flash` (falls back to `gemini-2.5-flash` on quota/unavailable).
+Phase 6 (Gemini vision) is done (v0.7.1): the plant modal's **Name field doubles as the AI prompt** (overwritten by the result; raw text persisted as `ai_prompt` via `panel.dataset.aiPrompt`). The ✨ generate and 📷 camera are overlay icons inside the Name field; the camera input uses `capture="environment"` to open the camera app directly. A single photo is resized to a 1024px JPEG, sent as `inline_data`, not saved/synced. Success shows a confidence + reasoning status line. Model is `gemini-3-flash` (falls back to `gemini-2.5-flash` on quota/unavailable). Plants-list rows show "Feed every Xd" only (feed label dropped — Gemini labels overflowed).
 
 ## Next 2-3 steps
 
@@ -16,7 +16,7 @@ Phase 6 (Gemini vision) is done in v0.7.0: the plant modal's ✨ autofill now ac
 
 ## Conventions
 
-- Current version: **v0.7.0**
+- Current version: **v0.7.1**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
 - Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.

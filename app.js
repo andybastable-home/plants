@@ -541,7 +541,6 @@ function buildPlantRow(plant, lastEvents) {
   let schedule = `Water every ${plant.water_days}d`;
   if (plant.feed_days) {
     schedule += ` · Feed every ${plant.feed_days}d`;
-    if (plant.feed_label) schedule += ` (${escHtml(plant.feed_label)})`;
   }
 
   const qty = plant.quantity > 1 ? ` <span class="qty">×${plant.quantity}</span>` : '';
@@ -683,22 +682,18 @@ function renderPlantModal(opts, rooms) {
     </div>
     <div class="settings-body">
       <div class="ai-config-section">
-        <label class="ai-config-label" for="field-ai-prompt">Describe it, let AI fill the rest</label>
+        <label class="ai-config-label" for="field-name">Name <span class="ai-config-hint">type or describe, then tap ✨</span></label>
         <div class="ai-prompt-wrap">
-          <textarea class="ai-config-input" id="field-ai-prompt" rows="2" placeholder="medium calathea in a 20cm pot">${escHtml(plant.ai_prompt || '')}</textarea>
-          <button id="ai-generate-btn" class="ai-button" type="button" aria-label="Fill plant details with AI">&#10024;</button>
+          <input class="ai-config-input" id="field-name" type="text" value="${escHtml(plant.name || '')}" maxlength="120" autocomplete="off" placeholder="e.g. Calathea, or 'medium calathea in a 20cm pot'">
+          <div class="ai-icons">
+            <button id="ai-photo-btn" class="ai-button" type="button" aria-label="Identify from a photo">${CAMERA_SVG}</button>
+            <button id="ai-generate-btn" class="ai-button" type="button" aria-label="Fill plant details with AI">&#10024;</button>
+          </div>
         </div>
-        <div class="ai-photo-row">
-          <button id="ai-photo-btn" class="btn btn-ghost" type="button">${CAMERA_SVG} Photo</button>
-          <input id="ai-photo-input" type="file" accept="image/*" hidden>
-          <span id="ai-photo-preview" hidden><img class="ai-photo-thumb" alt="Plant photo"> <button id="ai-photo-clear" class="btn btn-ghost" type="button" aria-label="Remove photo">✕</button></span>
-        </div>
-        <p id="ai-status" class="sync-status" aria-live="polite"></p>
-      </div>
-      <div class="ai-config-section">
-        <label class="ai-config-label" for="field-name">Name</label>
-        <input class="ai-config-input" id="field-name" type="text" value="${escHtml(plant.name || '')}" maxlength="80" autocomplete="off">
+        <input id="ai-photo-input" type="file" accept="image/*" capture="environment" hidden>
         <p class="field-error" id="field-name-error" hidden></p>
+        <span id="ai-photo-preview" class="ai-photo-preview" hidden><img class="ai-photo-thumb" alt="Plant photo"> <button id="ai-photo-clear" class="btn btn-ghost" type="button" aria-label="Remove photo">✕</button></span>
+        <p id="ai-status" class="sync-status" aria-live="polite"></p>
       </div>
       <div class="ai-config-section">
         <label class="ai-config-label" for="field-emoji">Emoji</label>
@@ -772,6 +767,10 @@ function renderPlantModal(opts, rooms) {
     if (tone) aiStatus.classList.add(`is-${tone}`);
   };
 
+  // The Name field doubles as the AI prompt; stash the raw text typed before
+  // generation so it can persist as ai_prompt even after the field is overwritten.
+  panel.dataset.aiPrompt = plant.ai_prompt || '';
+
   let pendingPhotoBase64 = null;
   const photoBtn     = panel.querySelector('#ai-photo-btn');
   const photoInput   = panel.querySelector('#ai-photo-input');
@@ -786,7 +785,8 @@ function renderPlantModal(opts, rooms) {
       pendingPhotoBase64 = await fileToResizedJpegBase64(file);
       photoThumb.src = `data:image/jpeg;base64,${pendingPhotoBase64}`;
       photoPreview.hidden = false;
-      setAiStatus('Photo attached.', 'info');
+      photoBtn.classList.add('is-active');
+      setAiStatus('Photo attached — tap ✨ to identify.', 'info');
     } catch (err) {
       setAiStatus(`Couldn't use that photo: ${err.message}`, 'error');
     }
@@ -795,11 +795,13 @@ function renderPlantModal(opts, rooms) {
     pendingPhotoBase64 = null;
     photoInput.value = '';
     photoPreview.hidden = true;
+    photoBtn.classList.remove('is-active');
   });
 
   aiBtn.addEventListener('click', async () => {
-    const promptText = panel.querySelector('#field-ai-prompt').value.trim();
+    const promptText = panel.querySelector('#field-name').value.trim();
     if (!promptText && !pendingPhotoBase64) { setAiStatus('Describe the plant or add a photo.', 'error'); return; }
+    panel.dataset.aiPrompt = promptText;
 
     const roomNewEl    = panel.querySelector('#field-room-new');
     const roomSelectEl = panel.querySelector('#field-room');
@@ -910,7 +912,6 @@ async function savePlantModal(panel, isEdit, rooms) {
   const feedEl      = panel.querySelector('#field-feed-days');
   const feedLabelEl = panel.querySelector('#field-feed-label');
   const notesEl     = panel.querySelector('#field-notes');
-  const aiPromptEl  = panel.querySelector('#field-ai-prompt');
 
   const nameErrEl  = panel.querySelector('#field-name-error');
   const waterErrEl = panel.querySelector('#field-water-days-error');
@@ -930,7 +931,7 @@ async function savePlantModal(panel, isEdit, rooms) {
   const feed_days  = parseInt(feedEl.value, 10) || null;
   const feed_label = feedLabelEl.value.trim() || null;
   const notes      = notesEl.value.trim() || null;
-  const ai_prompt  = aiPromptEl.value.trim() || null;
+  const ai_prompt  = (panel.dataset.aiPrompt || '').trim() || null;
 
   const roomNewEl    = panel.querySelector('#field-room-new');
   const roomSelectEl = panel.querySelector('#field-room');
