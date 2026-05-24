@@ -103,8 +103,12 @@ function requestToken({ silent }) {
     if (silent) {
       setTimeout(settle(() => reject(new Error('silent attempt timed out'))), 8000);
     }
-    const params = { prompt: silent ? '' : 'consent' };
+    // Use 'consent' only on a fresh first-time connect (no email stored yet).
+    // On reconnects (email known) use '' so the browser reuses the existing grant
+    // without forcing a full consent popup, which can fail with FedCM on some
+    // configurations.
     const hint = getEmail();
+    const params = { prompt: silent ? '' : (hint ? '' : 'consent') };
     if (hint) params.hint = hint;
     tokenClient.requestAccessToken(params);
   });
@@ -204,7 +208,7 @@ async function attachToSheet(input) {
   const sheetId = extractSheetId(input);
   if (!sheetId) throw new Error('Could not find a sheet ID in that URL');
 
-  await ensureFreshToken();
+  // Token is already fresh when called from actionConnect; no extra request needed.
   const meta = await apiCall(
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`
   );
@@ -212,6 +216,7 @@ async function attachToSheet(input) {
   if (!metadataTab) throw new Error('Sheet has no "Metadata" tab — wrong file?');
 
   setSheetId(sheetId);
+  console.log('[sync] Attached to sheet:', sheetId);
 }
 
 // ---- Backup (local → sheet, full replace) ----

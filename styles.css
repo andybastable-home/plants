@@ -93,6 +93,15 @@
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+
+/* On wide screens mirror the Pixel 8a viewport — this is a phone-first PWA */
+@media (min-width: 500px) {
+  body {
+    max-width: 430px;
+    margin-inline: auto;
+    border-inline: 1px solid var(--color-border);
+  }
+}
 img, svg { display: block; max-width: 100%; }
 button { font-family: inherit; }
 input { font-family: inherit; }
