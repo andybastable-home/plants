@@ -16,7 +16,7 @@ Phase 6 (Gemini vision) is done (v0.7.1): the plant modal's **Name field doubles
 
 ## Conventions
 
-- Current version: **v0.7.1**
+- Current version: **v0.7.2**
 - Deploy URL: `https://andybastable-home.github.io/plants/`
 - Three-location version bump on every shell commit: `index.html` brand-version span, `index.html` footer span, `service-worker.js` `CACHE_VERSION`.
 - Each phase = one Claude context window. If a phase grows past that, split it.

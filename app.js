@@ -141,8 +141,6 @@ async function addPlantWithNewRoom(plantFields, roomName) {
 function getGeminiKey() { return (localStorage.getItem('plants.geminiKey') || '').trim(); }
 function getAiContext() { return (localStorage.getItem('plants.aiContext') || '').trim(); }
 
-const CAMERA_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`;
-
 // gemini-3-flash primary; falls through to 2.5-flash on quota (429/403) or unavailable (404/400).
 const AUTOFILL_MODELS = ['gemini-3-flash', 'gemini-2.5-flash'];
 
@@ -684,9 +682,9 @@ function renderPlantModal(opts, rooms) {
       <div class="ai-config-section">
         <label class="ai-config-label" for="field-name">Name <span class="ai-config-hint">type or describe, then tap ✨</span></label>
         <div class="ai-prompt-wrap">
-          <input class="ai-config-input" id="field-name" type="text" value="${escHtml(plant.name || '')}" maxlength="120" autocomplete="off" placeholder="e.g. Calathea, or 'medium calathea in a 20cm pot'">
+          <textarea class="ai-config-input" id="field-name" rows="2" maxlength="120" autocomplete="off" placeholder="e.g. Calathea, or 'medium calathea in a 20cm pot'">${escHtml(plant.name || '')}</textarea>
           <div class="ai-icons">
-            <button id="ai-photo-btn" class="ai-button" type="button" aria-label="Identify from a photo">${CAMERA_SVG}</button>
+            <button id="ai-photo-btn" class="ai-button" type="button" aria-label="Identify from a photo">&#128247;</button>
             <button id="ai-generate-btn" class="ai-button" type="button" aria-label="Fill plant details with AI">&#10024;</button>
           </div>
         </div>
@@ -785,7 +783,6 @@ function renderPlantModal(opts, rooms) {
       pendingPhotoBase64 = await fileToResizedJpegBase64(file);
       photoThumb.src = `data:image/jpeg;base64,${pendingPhotoBase64}`;
       photoPreview.hidden = false;
-      photoBtn.classList.add('is-active');
       setAiStatus('Photo attached — tap ✨ to identify.', 'info');
     } catch (err) {
       setAiStatus(`Couldn't use that photo: ${err.message}`, 'error');
@@ -795,7 +792,7 @@ function renderPlantModal(opts, rooms) {
     pendingPhotoBase64 = null;
     photoInput.value = '';
     photoPreview.hidden = true;
-    photoBtn.classList.remove('is-active');
+    setAiStatus('', '');
   });
 
   aiBtn.addEventListener('click', async () => {
