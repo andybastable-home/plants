@@ -24,7 +24,7 @@
         </svg>
       </span>
       <span class="brand-name">Plants</span>
-      <span class="brand-version" aria-label="App version">v0.4.1</span>
+      <span class="brand-version" aria-label="App version">v0.5.0</span>
     </div>
     <div class="header-actions">
       <button id="settings-btn" class="settings-btn" type="button" aria-label="Settings">
@@ -52,7 +52,7 @@
   </main>
 
   <footer class="app-footer">
-    <span>v0.4.1 &middot; offline-ready</span>
+    <span>v0.5.0 &middot; offline-ready</span>
   </footer>
 
   <!-- Plant modal overlay — content filled by app.js -->
@@ -62,7 +62,37 @@
     </div>
   </div>
 
+  <!-- Settings / Sync overlay -->
+  <div class="settings-overlay" id="settings-overlay" hidden>
+    <div class="settings-panel" role="dialog" aria-modal="true" aria-label="Sync settings">
+      <div class="settings-header">
+        <h2 class="modal-title" style="text-align:left;">Sync</h2>
+        <button id="settings-close" class="settings-btn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="ai-config-section">
+          <label class="ai-config-label" for="sync-url">Sheet URL (leave blank to create new)</label>
+          <input type="text" id="sync-url" class="ai-config-input" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off">
+        </div>
+        <div class="settings-sync">
+          <button id="sync-connect" type="button" class="btn btn-primary">Connect</button>
+          <button id="sync-backup"  type="button" class="btn btn-ghost" disabled>Backup now</button>
+          <button id="sync-restore" type="button" class="btn btn-ghost" disabled>Restore from sheet</button>
+          <button id="sync-forget"  type="button" class="btn btn-ghost" hidden>Disconnect</button>
+          <a id="sync-sheet-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>Open sheet</a>
+        </div>
+        <p id="sync-status" class="sync-status" aria-live="polite"></p>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/dexie@4.4.2/dist/dexie.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./app.js"></script>
+  <script src="./sync.js"></script>
 </body>
 </html>

@@ -61,39 +61,53 @@ async function addRoom(name) {
   const maxOrderRoom = await db.rooms.orderBy('order').last();
   const order = maxOrderRoom ? maxOrderRoom.order + 1 : 0;
   const now = new Date().toISOString();
-  return db.rooms.add({ uuid: crypto.randomUUID(), name, order, created_at: now });
+  const id = await db.rooms.add({ uuid: crypto.randomUUID(), name, order, created_at: now });
+  window.scheduleBackup?.();
+  return id;
 }
 
 async function updateRoom(id, changes) {
-  return db.rooms.update(id, changes);
+  const result = await db.rooms.update(id, changes);
+  window.scheduleBackup?.();
+  return result;
 }
 
 async function deleteRoom(id) {
   const count = await db.plants.where('room_id').equals(id).count();
   if (count > 0) throw new Error('Remove all plants from this room first.');
-  return db.rooms.delete(id);
+  const result = await db.rooms.delete(id);
+  window.scheduleBackup?.();
+  return result;
 }
 
 async function addPlant(fields) {
   const now = new Date().toISOString();
-  return db.plants.add({ uuid: crypto.randomUUID(), created_at: now, ...fields });
+  const id = await db.plants.add({ uuid: crypto.randomUUID(), created_at: now, ...fields });
+  window.scheduleBackup?.();
+  return id;
 }
 
 async function updatePlant(id, changes) {
-  return db.plants.update(id, changes);
+  const result = await db.plants.update(id, changes);
+  window.scheduleBackup?.();
+  return result;
 }
 
 async function deletePlant(id) {
-  return db.plants.delete(id);
+  const result = await db.plants.delete(id);
+  window.scheduleBackup?.();
+  return result;
 }
 
 async function logCareEvent(plant_id, kind) {
-  return db.care_events.add({
+  const id = await db.care_events.add({
     uuid: crypto.randomUUID(),
     plant_id,
     kind,
     timestamp: new Date().toISOString(),
   });
+  window.scheduleBackup?.();
+  return id;
 }
 
 async function getLastCareEventsMap() {
@@ -110,13 +124,15 @@ async function getLastCareEventsMap() {
 }
 
 async function addPlantWithNewRoom(plantFields, roomName) {
-  return db.transaction('rw', db.rooms, db.plants, async () => {
+  const result = await db.transaction('rw', db.rooms, db.plants, async () => {
     const maxOrderRoom = await db.rooms.orderBy('order').last();
     const order = maxOrderRoom ? maxOrderRoom.order + 1 : 0;
     const now = new Date().toISOString();
     const roomId = await db.rooms.add({ uuid: crypto.randomUUID(), name: roomName, order, created_at: now });
     await db.plants.add({ uuid: crypto.randomUUID(), created_at: now, ...plantFields, room_id: roomId });
   });
+  window.scheduleBackup?.();
+  return result;
 }
 
 // ------------------------------------------------------------------
@@ -814,6 +830,10 @@ function hideFieldError(el) {
 function init() {
   els.tabs.forEach((btn) => {
     btn.addEventListener('click', () => setTab(btn.dataset.tab));
+  });
+
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    window.openSettings?.();
   });
 
   // Close overlay on backdrop tap or Escape
