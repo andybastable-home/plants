@@ -41,6 +41,7 @@ const els = {
 let currentTab = 'today';
 let modalMode  = null; // 'add' | 'edit' | 'room-edit'
 let editingId  = null; // plant id or room id
+let overlayOpenedAt = 0; // timestamp guard against post-tap ghost clicks
 
 // ------------------------------------------------------------------
 // Data access
@@ -766,6 +767,10 @@ function openRoomEditModal(room) {
 function showOverlay() {
   els.overlay.hidden = false;
   document.body.style.overflow = 'hidden';
+  // Guard against the ghost click synthesised after a touch tap: when the
+  // sheet opens under the finger, that click would otherwise hit the backdrop
+  // and close it instantly (only visible for rows away from the panel).
+  overlayOpenedAt = Date.now();
 }
 
 function closeOverlay() {
@@ -1169,7 +1174,9 @@ function init() {
 
   // Close overlay on backdrop tap or Escape
   els.overlay.addEventListener('click', (e) => {
-    if (e.target === els.overlay) closeOverlay();
+    if (e.target !== els.overlay) return;
+    if (Date.now() - overlayOpenedAt < 400) return; // ignore ghost click
+    closeOverlay();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && !els.overlay.hidden) closeOverlay();
