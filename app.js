@@ -256,7 +256,7 @@ function dueStatus(plant, kind, lastEventDate, today) {
 // Today tab — render
 // ------------------------------------------------------------------
 const WATER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l4.5 6.5a5.5 5.5 0 1 1-9 0z"/></svg>`;
-const FEED_SVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21V11a5 5 0 0 1 10 0v10"/><path d="M12 11V3"/></svg>`;
+const FEED_SVG  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="3" rx="0.5"/><rect x="6.5" y="5.5" width="11" height="15.5" rx="2.5"/><path d="M12 11v6M9 14h6"/></svg>`;
 
 async function renderToday() {
   const todayPane = document.querySelector('[data-pane="today"]');
