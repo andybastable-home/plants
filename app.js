@@ -574,6 +574,7 @@ function attachRowSwipe(li, contentEl, plant, lastEvents) {
   let axis = null;        // null | 'h' | 'v'
   let dragging = false;
   let maxMove = 0;
+  let pendingTap = false; // open the sheet on the real click, not pointerup
 
   const threshold = () => Math.max(80, li.offsetWidth * 0.35);
 
@@ -595,7 +596,7 @@ function attachRowSwipe(li, contentEl, plant, lastEvents) {
     if (pointerId !== null) return;
     pointerId = e.pointerId;
     startX = e.clientX; startY = e.clientY;
-    axis = null; dragging = true; maxMove = 0;
+    axis = null; dragging = true; maxMove = 0; pendingTap = false;
     contentEl.style.transition = '';
   });
 
@@ -631,7 +632,9 @@ function attachRowSwipe(li, contentEl, plant, lastEvents) {
 
     if (!wasH) {
       settle(false);
-      if (maxMove < 10) openPlantActionSheet(plant, lastEvents);
+      // Defer to the click event so the post-tap ghost click can't also hit a
+      // control in the just-opened sheet (e.g. Edit, for a bottom-of-screen row).
+      pendingTap = (axis === null && maxMove < 10);
       return;
     }
 
@@ -661,6 +664,11 @@ function attachRowSwipe(li, contentEl, plant, lastEvents) {
     dragging = false; pointerId = null;
     settle(true);
   });
+  li.addEventListener('click', () => {
+    if (!pendingTap) return;
+    pendingTap = false;
+    openPlantActionSheet(plant, lastEvents);
+  });
 }
 
 function lastCareLabel(careDate) {
@@ -671,10 +679,20 @@ function lastCareLabel(careDate) {
   return `${days}d ago`;
 }
 
-// Bottom sheet: plant name, last watered/fed, Edit + Delete.
+// Bottom sheet: plant name, water/feed info, Edit + Delete.
 function openPlantActionSheet(plant, lastEvents) {
   const ev = lastEvents || { water: null, feed: null };
   const panel = els.overlayPanel;
+
+  const waterSched = ` · every ${plant.water_days}d`;
+  const feedSched  = plant.feed_days ? ` · every ${plant.feed_days}d` : ' · no schedule';
+  const feedLabelLine = plant.feed_label
+    ? `<p class="plant-sheet-feed-label">Feed: ${escHtml(plant.feed_label)}</p>`
+    : '';
+  const notesLine = plant.notes
+    ? `<p class="plant-sheet-note">${escHtml(plant.notes)}</p>`
+    : '';
+
   panel.innerHTML = `
     <div class="settings-header">
       <button class="btn btn-ghost" id="sheet-close-btn" type="button">Close</button>
@@ -683,8 +701,10 @@ function openPlantActionSheet(plant, lastEvents) {
     </div>
     <div class="settings-body">
       <div class="plant-sheet-care">
-        <p class="plant-sheet-line">💧 Watered ${lastCareLabel(ev.water)}</p>
-        <p class="plant-sheet-line">🌱 Fed ${lastCareLabel(ev.feed)}</p>
+        <p class="plant-sheet-line">💧 Watered ${lastCareLabel(ev.water)}${waterSched}</p>
+        <p class="plant-sheet-line">🌱 Fed ${lastCareLabel(ev.feed)}${feedSched}</p>
+        ${feedLabelLine}
+        ${notesLine}
       </div>
       <div class="modal-actions">
         <button class="btn btn-primary" id="sheet-edit-btn" type="button">Edit</button>

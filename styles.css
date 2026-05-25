@@ -599,6 +599,19 @@ body::before {
   font-size: 15px;
   color: var(--color-text);
 }
+.plant-sheet-feed-label {
+  margin: var(--space-1) 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-warning);
+}
+.plant-sheet-note {
+  margin: var(--space-2) 0 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
 
 /* ============================================================
    Overlay / Modal
