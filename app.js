@@ -543,23 +543,192 @@ function buildPlantRow(plant, lastEvents) {
 
   const qty = plant.quantity > 1 ? ` <span class="qty">×${plant.quantity}</span>` : '';
   li.innerHTML = `
-    <span class="plant-row-emoji">${escHtml(plant.emoji || '🌱')}</span>
-    <div>
-      <h4 class="plant-row-name">${escHtml(plant.name)}${qty}</h4>
-      <p class="plant-row-schedule">${schedule}</p>
+    <div class="plant-row-swipe is-water">
+      <span class="plant-row-swipe-icon">${WATER_SVG}</span><span class="plant-row-swipe-label">Water</span>
     </div>
-    <span class="plant-row-meta">${lastWateredLabel(lastEvents && lastEvents.water)}</span>
+    <div class="plant-row-swipe is-feed">
+      <span class="plant-row-swipe-icon">${FEED_SVG}</span><span class="plant-row-swipe-label">Feed</span>
+    </div>
+    <div class="plant-row-content">
+      <span class="plant-row-emoji">${escHtml(plant.emoji || '🌱')}</span>
+      <div>
+        <h4 class="plant-row-name">${escHtml(plant.name)}${qty}</h4>
+        <p class="plant-row-schedule">${schedule}</p>
+      </div>
+      <span class="plant-row-meta">${lastCareLabel(lastEvents && lastEvents.water)}</span>
+    </div>
   `;
-  li.addEventListener('click', () => openEditModal(plant));
+  const content = li.querySelector('.plant-row-content');
+  attachRowSwipe(li, content, plant, lastEvents);
   return li;
 }
 
-function lastWateredLabel(waterDate) {
-  if (!waterDate) return 'never';
+// Swipe right → water, left → feed. Tap (no horizontal drag) → action sheet.
+function attachRowSwipe(li, contentEl, plant, lastEvents) {
+  const waterBg = li.querySelector('.plant-row-swipe.is-water');
+  const feedBg  = li.querySelector('.plant-row-swipe.is-feed');
+
+  let pointerId = null;
+  let startX = 0, startY = 0;
+  let axis = null;        // null | 'h' | 'v'
+  let dragging = false;
+  let maxMove = 0;
+
+  const threshold = () => Math.max(80, li.offsetWidth * 0.35);
+
+  function paint(dx) {
+    contentEl.style.transform = `translateX(${dx}px)`;
+    const p = Math.min(1, Math.abs(dx) / threshold());
+    waterBg.style.opacity = dx > 0 ? String(p) : '0';
+    feedBg.style.opacity  = dx < 0 ? String(p) : '0';
+  }
+
+  function settle(animate) {
+    contentEl.style.transition = animate ? 'transform 0.2s ease' : '';
+    contentEl.style.transform = '';
+    waterBg.style.opacity = '0';
+    feedBg.style.opacity = '0';
+  }
+
+  li.addEventListener('pointerdown', (e) => {
+    if (pointerId !== null) return;
+    pointerId = e.pointerId;
+    startX = e.clientX; startY = e.clientY;
+    axis = null; dragging = true; maxMove = 0;
+    contentEl.style.transition = '';
+  });
+
+  li.addEventListener('pointermove', (e) => {
+    if (!dragging || e.pointerId !== pointerId) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    maxMove = Math.max(maxMove, Math.abs(dx), Math.abs(dy));
+
+    if (axis === null) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dy) > Math.abs(dx)) { axis = 'v'; return; }
+      axis = 'h';
+      try { li.setPointerCapture(pointerId); } catch {}
+    }
+    if (axis !== 'h') return;
+    e.preventDefault();
+
+    // Clamp, with rubber-band resistance past one row-width.
+    const w = li.offsetWidth || 1;
+    let move = dx;
+    if (Math.abs(move) > w) move = Math.sign(move) * (w + (Math.abs(move) - w) * 0.3);
+    paint(move);
+  });
+
+  async function onUp(e) {
+    if (!dragging || e.pointerId !== pointerId) return;
+    dragging = false;
+    const wasH = axis === 'h';
+    const dx = e.clientX - startX;
+    try { li.releasePointerCapture(pointerId); } catch {}
+    pointerId = null;
+
+    if (!wasH) {
+      settle(false);
+      if (maxMove < 10) openPlantActionSheet(plant, lastEvents);
+      return;
+    }
+
+    if (Math.abs(dx) >= threshold()) {
+      const kind = dx > 0 ? 'water' : 'feed';
+      const dir  = dx > 0 ? 1 : -1;
+      contentEl.style.transition = 'transform 0.2s ease';
+      contentEl.style.transform = `translateX(${dir * (li.offsetWidth || 0)}px)`;
+      const eventId = await logCareEvent(plant.id, kind);
+      const verb = kind === 'water' ? 'Watered' : 'Fed';
+      showUndoToast(`${verb} ${plant.name} ✓`, async () => {
+        await db.care_events.delete(eventId);
+        window.scheduleBackup?.();
+        renderPlants();
+        renderToday();
+      });
+      renderPlants();
+      renderToday();
+    } else {
+      settle(true);
+    }
+  }
+
+  li.addEventListener('pointerup', onUp);
+  li.addEventListener('pointercancel', (e) => {
+    if (e.pointerId !== pointerId) return;
+    dragging = false; pointerId = null;
+    settle(true);
+  });
+}
+
+function lastCareLabel(careDate) {
+  if (!careDate) return 'never';
   const today = new Date();
-  const days = calendarDaysBetween(waterDate, today);
+  const days = calendarDaysBetween(careDate, today);
   if (days === 0) return 'today';
   return `${days}d ago`;
+}
+
+// Bottom sheet: plant name, last watered/fed, Edit + Delete.
+function openPlantActionSheet(plant, lastEvents) {
+  const ev = lastEvents || { water: null, feed: null };
+  const panel = els.overlayPanel;
+  panel.innerHTML = `
+    <div class="settings-header">
+      <button class="btn btn-ghost" id="sheet-close-btn" type="button">Close</button>
+      <h2 class="modal-title">${escHtml(plant.emoji || '🌱')} ${escHtml(plant.name)}</h2>
+      <div class="modal-header-spacer" aria-hidden="true"></div>
+    </div>
+    <div class="settings-body">
+      <div class="plant-sheet-care">
+        <p class="plant-sheet-line">💧 Watered ${lastCareLabel(ev.water)}</p>
+        <p class="plant-sheet-line">🌱 Fed ${lastCareLabel(ev.feed)}</p>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="sheet-edit-btn" type="button">Edit</button>
+      </div>
+      <div id="delete-area"><button class="btn btn-danger" id="modal-delete-btn" type="button">Delete plant</button></div>
+    </div>
+  `;
+  panel.querySelector('#sheet-close-btn').addEventListener('click', closeOverlay);
+  panel.querySelector('#sheet-edit-btn').addEventListener('click', () => {
+    closeOverlay();
+    openEditModal(plant);
+  });
+  panel.querySelector('#modal-delete-btn').addEventListener('click', () => {
+    showDeleteConfirm(panel, async () => {
+      await deletePlant(plant.id);
+      closeOverlay();
+      renderPlants();
+      renderToday();
+    });
+  });
+  showOverlay();
+}
+
+let toastTimer = null;
+function showUndoToast(message, onUndo) {
+  let toast = document.getElementById('undo-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'undo-toast';
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<span class="toast-msg"></span><button class="toast-undo" type="button">Undo</button>`;
+  toast.querySelector('.toast-msg').textContent = message;
+
+  clearTimeout(toastTimer);
+  const dismiss = () => { toast.classList.remove('is-visible'); clearTimeout(toastTimer); };
+
+  toast.querySelector('.toast-undo').addEventListener('click', async () => {
+    dismiss();
+    await onUndo();
+  });
+
+  requestAnimationFrame(() => toast.classList.add('is-visible'));
+  toastTimer = setTimeout(dismiss, 4000);
 }
 
 function escHtml(str) {

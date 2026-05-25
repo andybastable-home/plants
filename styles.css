@@ -36,6 +36,8 @@
   --color-warning-soft:   hsl(32 75% 95%);
   --color-danger:         hsl(4 62% 48%);
   --color-danger-soft:    hsl(4 70% 96%);
+  --color-water:          hsl(205 80% 45%);
+  --color-water-soft:     hsl(205 80% 95%);
 
   /* Spacing scale */
   --space-1: 4px;
@@ -85,6 +87,8 @@
     --color-warning-soft: hsl(28 30% 18%);
     --color-danger:       hsl(4 65% 62%);
     --color-danger-soft:  hsl(4 30% 18%);
+    --color-water:        hsl(205 75% 58%);
+    --color-water-soft:   hsl(205 40% 18%);
   }
 }
 
@@ -455,17 +459,43 @@ body::before {
 
 .plant-list { list-style: none; margin: 0; padding: 0; }
 .plant-row {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--color-border-soft);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
+}
+.plant-row:last-child { border-bottom: none; }
+.plant-row-content {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-soft);
+  background: var(--color-surface);
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
 }
-.plant-row:last-child { border-bottom: none; }
-.plant-row:active { background: var(--color-surface-alt); }
+.plant-row-content:active { background: var(--color-surface-alt); }
+.plant-row-swipe {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-5);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  opacity: 0;
+}
+.plant-row-swipe-icon { width: 22px; height: 22px; display: inline-flex; }
+.plant-row-swipe-icon svg { width: 100%; height: 100%; }
+.plant-row-swipe.is-water { background: var(--color-water);   justify-content: flex-start; }
+.plant-row-swipe.is-feed  { background: var(--color-warning); justify-content: flex-end; }
 .plant-row-emoji { font-size: 22px; line-height: 1; width: 32px; text-align: center; }
 .plant-row-name {
   font-family: var(--font-display);
@@ -513,6 +543,61 @@ body::before {
   background: var(--color-accent-strong);
   transform: scale(0.94);
   box-shadow: 0 2px 6px var(--color-shadow-lg);
+}
+
+/* ============================================================
+   Undo toast
+   ============================================================ */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  transform: translateX(-50%) translateY(16px);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - var(--space-5) * 2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 24px var(--color-shadow-lg);
+  z-index: 150;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.toast-msg { font-size: 14px; font-weight: 500; }
+.toast-undo {
+  border: none;
+  background: none;
+  color: var(--color-accent);
+  font-weight: 700;
+  font-size: 14px;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ============================================================
+   Plant action sheet
+   ============================================================ */
+.plant-sheet-care {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+.plant-sheet-line {
+  margin: 0;
+  font-size: 15px;
+  color: var(--color-text);
 }
 
 /* ============================================================
