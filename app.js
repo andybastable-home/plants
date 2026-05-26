@@ -31,11 +31,12 @@ db.version(1).stores({
 // State + DOM refs
 // ------------------------------------------------------------------
 const els = {
-  tabs:         document.querySelectorAll('.tab-btn'),
-  panes:        document.querySelectorAll('.tab-pane'),
-  plantsPane:   document.querySelector('[data-pane="plants"]'),
-  overlay:      document.getElementById('plant-overlay'),
-  overlayPanel: document.getElementById('plant-overlay-panel'),
+  tabs:          document.querySelectorAll('.tab-btn'),
+  panes:         document.querySelectorAll('.tab-pane'),
+  plantsPane:    document.querySelector('[data-pane="plants"]'),
+  upcomingPane:  document.querySelector('[data-pane="upcoming"]'),
+  overlay:       document.getElementById('plant-overlay'),
+  overlayPanel:  document.getElementById('plant-overlay-panel'),
 };
 
 let currentTab = 'today';
@@ -444,10 +445,120 @@ function buildActionBtn(kind, statusObj, plant, cardEl) {
       await logCareEvent(plant.id, kind);
       renderToday();
       renderPlants();
+      renderUpcoming();
     });
   }
 
   return btn;
+}
+
+// ------------------------------------------------------------------
+// Up Next tab — render
+// ------------------------------------------------------------------
+async function renderUpcoming() {
+  const pane = els.upcomingPane;
+  const today = new Date();
+
+  const [plants, rooms, lastEventsMap] = await Promise.all([
+    getAllPlants(),
+    getRooms(),
+    getLastCareEventsMap(),
+  ]);
+
+  const roomsById = new Map(rooms.map(r => [r.id, r]));
+
+  const entries = plants
+    .map(plant => {
+      const last = lastEventsMap.get(plant.id) || { water: null, feed: null };
+      const water = dueStatus(plant, 'water', last.water, today);
+      const feed  = dueStatus(plant, 'feed',  last.feed,  today);
+      return { plant, water, feed, last };
+    })
+    .filter(e => !(e.water.status === 'na' && e.feed.status === 'na'));
+
+  entries.sort((a, b) => {
+    const aDays = Math.min(a.water.daysUntil ?? Infinity, a.feed.daysUntil ?? Infinity);
+    const bDays = Math.min(b.water.daysUntil ?? Infinity, b.feed.daysUntil ?? Infinity);
+    if (aDays !== bDays) return aDays - bDays;
+    return (a.plant.name || '').localeCompare(b.plant.name || '');
+  });
+
+  pane.innerHTML = '';
+
+  const overdueCount = entries.filter(e =>
+    e.water.status === 'overdue' || e.feed.status === 'overdue'
+  ).length;
+
+  const headline = document.createElement('div');
+  headline.className = 'today-headline';
+  const metaStr = entries.length === 0
+    ? 'No plants on a schedule'
+    : `<strong>${entries.length}</strong> plant${entries.length !== 1 ? 's' : ''}${overdueCount > 0 ? ` &middot; <strong>${overdueCount}</strong> overdue` : ''}`;
+  headline.innerHTML = `
+    <h1 class="today-headline-date">Up Next</h1>
+    <p class="today-headline-meta">${metaStr}</p>
+  `;
+  pane.appendChild(headline);
+
+  if (entries.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'placeholder';
+    empty.textContent = 'Add plants with a schedule to see them here.';
+    pane.appendChild(empty);
+    return;
+  }
+
+  const ul = document.createElement('ul');
+  ul.className = 'plant-list';
+  for (const e of entries) {
+    ul.appendChild(buildUpcomingRow(e.plant, roomsById.get(e.plant.room_id), e.water, e.feed, e.last));
+  }
+  pane.appendChild(ul);
+
+  const spacer = document.createElement('div');
+  spacer.style.height = '32px';
+  spacer.setAttribute('aria-hidden', 'true');
+  pane.appendChild(spacer);
+}
+
+function buildUpcomingRow(plant, room, water, feed, lastEvents) {
+  const li = document.createElement('li');
+  li.className = 'plant-row';
+
+  function actionLabel(kind, s) {
+    if (s.status === 'na') return null;
+    if (s.status === 'overdue') return `${kind} ${Math.abs(s.daysUntil)}d late`;
+    if (s.status === 'due') return `${kind} today`;
+    return `${kind} in ${s.daysUntil}d`;
+  }
+
+  const labelParts = [];
+  if (room) labelParts.push(room.name);
+  const wLabel = actionLabel('water', water);
+  const fLabel = actionLabel('feed', feed);
+  if (wLabel) labelParts.push(wLabel);
+  if (fLabel) labelParts.push(fLabel);
+  const scheduleText = labelParts.join(' · ');
+
+  const qty = plant.quantity > 1 ? ` <span class="qty">×${plant.quantity}</span>` : '';
+  li.innerHTML = `
+    <div class="plant-row-swipe is-water">
+      <span class="plant-row-swipe-icon">${WATER_SVG}</span><span class="plant-row-swipe-label">Water</span>
+    </div>
+    <div class="plant-row-swipe is-feed">
+      <span class="plant-row-swipe-icon">${FEED_SVG}</span><span class="plant-row-swipe-label">Feed</span>
+    </div>
+    <div class="plant-row-content">
+      <span class="plant-row-emoji">${escHtml(plant.emoji || '🌱')}</span>
+      <div>
+        <h4 class="plant-row-name">${escHtml(plant.name)}${qty}</h4>
+        <p class="plant-row-schedule">${escHtml(scheduleText)}</p>
+      </div>
+    </div>
+  `;
+  const content = li.querySelector('.plant-row-content');
+  attachRowSwipe(li, content, plant, lastEvents);
+  return li;
 }
 
 // ------------------------------------------------------------------
@@ -461,8 +572,9 @@ function setTab(tab) {
   els.panes.forEach((pane) => {
     pane.hidden = pane.dataset.pane !== tab;
   });
-  if (tab === 'plants') renderPlants();
-  if (tab === 'today')  renderToday();
+  if (tab === 'plants')   renderPlants();
+  if (tab === 'today')    renderToday();
+  if (tab === 'upcoming') renderUpcoming();
 }
 
 // ------------------------------------------------------------------
@@ -650,9 +762,11 @@ function attachRowSwipe(li, contentEl, plant, lastEvents) {
         window.scheduleBackup?.();
         renderPlants();
         renderToday();
+        renderUpcoming();
       });
       renderPlants();
       renderToday();
+      renderUpcoming();
     } else {
       settle(true);
     }
@@ -723,6 +837,7 @@ function openPlantActionSheet(plant, lastEvents) {
       closeOverlay();
       renderPlants();
       renderToday();
+      renderUpcoming();
     });
   });
   showOverlay();
@@ -1057,6 +1172,7 @@ async function markDueToday(plant_id, kind, cadence) {
   closeOverlay();
   renderToday();
   renderPlants();
+  renderUpcoming();
 }
 
 function swapRoomSelectForInput(roomSection, rooms) {
@@ -1152,6 +1268,7 @@ async function savePlantModal(panel, isEdit, rooms) {
 
   closeOverlay();
   renderPlants();
+  renderUpcoming();
 }
 
 function showDeleteConfirm(panel, onConfirm) {

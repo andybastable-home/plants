@@ -24,7 +24,7 @@
         </svg>
       </span>
       <span class="brand-name">Plants</span>
-      <span class="brand-version" aria-label="App version">v0.8.3</span>
+      <span class="brand-version" aria-label="App version">v0.8.4</span>
     </div>
     <div class="header-actions">
       <button id="settings-btn" class="settings-btn" type="button" aria-label="Settings">
@@ -38,12 +38,16 @@
 
   <nav class="tab-strip" role="tablist" aria-label="Sections">
     <button class="tab-btn" role="tab" data-tab="today" aria-selected="true">Today</button>
+    <button class="tab-btn" role="tab" data-tab="upcoming" aria-selected="false">Up Next</button>
     <button class="tab-btn" role="tab" data-tab="plants" aria-selected="false">Plants</button>
   </nav>
 
   <main class="app-main">
     <section class="tab-pane" data-pane="today">
       <!-- filled by app.js renderToday() -->
+    </section>
+    <section class="tab-pane" data-pane="upcoming" hidden>
+      <!-- filled by app.js renderUpcoming() -->
     </section>
     <section class="tab-pane" data-pane="plants" hidden>
       <!-- filled by app.js renderPlants() -->
@@ -52,7 +56,7 @@
   </main>
 
   <footer class="app-footer">
-    <span>v0.8.3 &middot; offline-ready</span>
+    <span>v0.8.4 &middot; offline-ready</span>
   </footer>
 
   <!-- Plant modal overlay — content filled by app.js -->
