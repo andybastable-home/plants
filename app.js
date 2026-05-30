@@ -35,6 +35,12 @@ function notifySupported() {
   return 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
 }
 
+// The worker URL is a code const, filled after `wrangler deploy`. Until then every
+// worker call would just "Failed to fetch" — detect the placeholder and say so.
+function workerConfigured() {
+  return !WORKER_URL.includes('REPLACE-ME');
+}
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -106,6 +112,7 @@ async function pushScheduleToWorker() {
 window.pushScheduleToWorker = pushScheduleToWorker;
 
 async function enableNotifications() {
+  if (!workerConfigured()) throw new Error('no-worker');
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error(perm === 'denied' ? 'blocked' : 'dismissed');
   const reg = await navigator.serviceWorker.ready;
@@ -149,7 +156,8 @@ function renderNotifyUI() {
   const enabled = localStorage.getItem(NOTIFY_ENABLED_KEY) === '1';
   toggle.textContent = enabled ? 'Disable' : 'Enable';
   if (test) test.hidden = !enabled;
-  if (Notification.permission === 'denied') setNotifyStatus('Blocked — enable notifications in browser/app settings.', 'error');
+  if (!workerConfigured()) setNotifyStatus('Push worker not deployed yet — deploy it and set WORKER_URL in app.js.', 'info');
+  else if (Notification.permission === 'denied') setNotifyStatus('Blocked — enable notifications in browser/app settings.', 'error');
   else if (enabled) setNotifyStatus('On — daily reminder at ~7:30am when something’s due.', 'ok');
   else setNotifyStatus('', '');
 }
@@ -171,7 +179,8 @@ function bindNotifyUI() {
         setNotifyStatus('Reminders on — schedule sent.', 'ok');
       }
     } catch (err) {
-      const msg = err.message === 'blocked' ? 'Permission blocked — enable in settings.'
+      const msg = err.message === 'no-worker' ? 'Push worker not deployed yet — deploy it and set WORKER_URL in app.js.'
+        : err.message === 'blocked' ? 'Permission blocked — enable in settings.'
         : err.message === 'dismissed' ? 'Permission dismissed — tap Enable again.'
         : `Failed: ${err.message.slice(0, 80)}`;
       setNotifyStatus(msg, 'error');
@@ -183,6 +192,7 @@ function bindNotifyUI() {
 
   if (test) {
     test.addEventListener('click', async () => {
+      if (!workerConfigured()) { setNotifyStatus('Push worker not deployed yet — set WORKER_URL in app.js.', 'error'); return; }
       setNotifyStatus('Sending test…', 'info');
       try {
         const data = await postToWorker('/test-send', null, 'GET');
