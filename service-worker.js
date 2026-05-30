@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.6';
+const CACHE_VERSION = 'v0.9.7';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -61,6 +61,7 @@ self.addEventListener('fetch', (event) => {
 // Chrome, using the icon below.
 // ----------------------------------------------------------------------------
 self.addEventListener('push', (event) => {
+  console.log('PLANTS-SW push received');
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch {}
   const title = payload.title || 'Plants 🌱';
@@ -119,6 +120,7 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log(`PLANTS-SW notificationclick fired action=${event.action || 'body'}`);
   event.notification.close();
 
   if (event.action === 'defer') {
@@ -154,6 +156,7 @@ self.addEventListener('notificationclick', (event) => {
     } catch (e) {
       info += ` ERR=${e.name}:${(e.message || '').slice(0, 50)}`;
     }
+    console.log(`PLANTS-SW click ${info}`);
     // Temporary always-on diagnostic so we can see the path taken on-device.
     try { await self.registration.showNotification('diag', { body: info, tag: 'plants-diag', icon: './icons/icon-192.png' }); } catch {}
   })());
