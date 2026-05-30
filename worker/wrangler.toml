@@ -1,6 +1,8 @@
 name = "plants"
 main = "index.js"
 compatibility_date = "2024-11-01"
+# web-push lib imports node:crypto — needs the Node compat shim on Workers.
+compatibility_flags = ["nodejs_compat"]
 
 # Cron candidates in UTC. The scheduled handler only sends on the trigger that
 # equals the target London wall-clock time, so this self-corrects across BST/GMT:
