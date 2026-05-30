@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.7';
+const CACHE_VERSION = 'v0.9.8';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -23,6 +23,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
+  console.log(`PLANTS-SW activated ${CACHE_VERSION}`);
   event.waitUntil(
     caches.keys()
       .then((keys) => Promise.all(
@@ -61,10 +62,11 @@ self.addEventListener('fetch', (event) => {
 // Chrome, using the icon below.
 // ----------------------------------------------------------------------------
 self.addEventListener('push', (event) => {
-  console.log('PLANTS-SW push received');
+  console.log(`PLANTS-SW push received (${CACHE_VERSION})`);
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch {}
-  const title = payload.title || 'Plants 🌱';
+  // Version stamp in the title so the notification reveals which SW produced it.
+  const title = `${payload.title || 'Plants 🌱'} [${CACHE_VERSION}]`;
   const url   = payload.url || './?tab=today';
   const options = {
     body: payload.body || 'Something needs your attention.',
