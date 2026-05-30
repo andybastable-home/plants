@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.3';
+const CACHE_VERSION = 'v0.9.4';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -89,6 +89,34 @@ self.addEventListener('push', (event) => {
 // already a public client const; it only guards writes to Andy's own KV.
 const WORKER_URL = 'https://plants.plants-andyb.workers.dev';
 const PUSH_TOKEN = 'SuperSecretPlants837492!';
+const VAPID_PUBLIC_KEY = 'BG3-MCSSCdyPhV__rDZtrOZryJUjC2qNEH8owW5hVy0dH4IO3TpFwRtUHKOhMvTqsJq1g16hvEjqw3ap-8knN4k';
+
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+// The browser may rotate the push subscription; re-subscribe and re-register it
+// with the worker even if the app is closed (the page-side sync can't run then).
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      const sub = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+      await fetch(`${WORKER_URL}/subscribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${PUSH_TOKEN}` },
+        body: JSON.stringify(sub),
+      });
+    } catch {}
+  })());
+});
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

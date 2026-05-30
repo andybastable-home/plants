@@ -114,6 +114,26 @@ async function enableNotifications() {
   await pushScheduleToWorker();
 }
 
+// Re-store the current push subscription in the worker KV. Self-heals if KV lost
+// it (rotation, transient 410) — runs on every launch when reminders are enabled.
+async function syncSubscription() {
+  if (localStorage.getItem(NOTIFY_ENABLED_KEY) !== '1' || !workerConfigured()) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    await postToWorker('/subscribe', sub);
+    await pushScheduleToWorker();
+  } catch (err) {
+    console.warn('[push] subscription sync failed:', err.message);
+  }
+}
+
 async function disableNotifications() {
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.getSubscription();
@@ -1496,7 +1516,8 @@ function init() {
 
   bindNotifyUI();
 
-  // Retry a queued schedule push (e.g. the last mutation failed while offline).
+  // Self-heal the worker's stored subscription + retry any queued schedule push.
+  syncSubscription();
   if (localStorage.getItem(NOTIFY_PENDING_KEY)) pushScheduleToWorker();
 
   // Deep-link from a tapped notification: ./?tab=today
