@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.4';
+const CACHE_VERSION = 'v0.9.5';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -126,20 +126,37 @@ self.addEventListener('notificationclick', (event) => {
     return;
   }
 
-  // Resolve to an absolute URL — a relative one can silently no-op in
-  // clients.openWindow() on Android when the app is closed.
+  const scope = self.registration.scope; // https://…/plants/
   const rel = (event.notification.data && event.notification.data.url) || './?tab=today';
-  const target = new URL(rel, self.registration.scope).href;
+  const target = new URL(rel, scope).href;
 
   event.waitUntil((async () => {
-    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of all) {
-      if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
-        if ('navigate' in client) { try { await client.navigate(target); } catch {} }
-        return client.focus();
+    let info = '';
+    try {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      info += `clients=${all.length}`;
+      // Focus an already-open window if there is one; fall through if focus fails.
+      const client = all.find((c) => c.url.startsWith(scope));
+      if (client) {
+        try {
+          await client.focus();
+          if ('navigate' in client) { try { await client.navigate(target); } catch {} }
+          return;
+        } catch (e) { info += ` focusErr=${e.name}`; }
       }
+      // No focusable window — launch the PWA. Try the deep-link, then fall back to
+      // the bare scope root (exact start_url) which some Android builds require to
+      // launch an installed PWA. (Today is the default tab, so the root still lands
+      // on Today.)
+      let win = await self.clients.openWindow(target);
+      info += ` win1=${win ? 'ok' : 'null'}`;
+      if (!win) { win = await self.clients.openWindow(scope); info += ` win2=${win ? 'ok' : 'null'}`; }
+      if (win) return;
+    } catch (e) {
+      info += ` err=${e.name}:${(e.message || '').slice(0, 60)}`;
     }
-    return self.clients.openWindow(target);
+    // Only reached if nothing opened — surface why, on-device (temporary diag).
+    try { await self.registration.showNotification('Open failed (diag)', { body: info, tag: 'plants-diag', icon: './icons/icon-192.png' }); } catch {}
   })());
 });
 
