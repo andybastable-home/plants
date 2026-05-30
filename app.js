@@ -24,7 +24,7 @@ if ('serviceWorker' in navigator) {
 // ------------------------------------------------------------------
 // Fill WORKER_URL after `wrangler deploy` prints it
 // (e.g. https://plants.<your-subdomain>.workers.dev). No trailing slash.
-const WORKER_URL      = 'https://plants.REPLACE-ME.workers.dev';
+const WORKER_URL      = 'https://plants.plants-andyb.workers.dev';
 const PUSH_TOKEN      = 'SuperSecretPlants837492!';
 const VAPID_PUBLIC_KEY = 'BG3-MCSSCdyPhV__rDZtrOZryJUjC2qNEH8owW5hVy0dH4IO3TpFwRtUHKOhMvTqsJq1g16hvEjqw3ap-8knN4k';
 
