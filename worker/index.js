@@ -141,6 +141,14 @@ export default {
         await env.plants.put(`deferred:${dateStr}`, '1', { expirationTtl: 20 * 3600 });
         return json({ ok: true, deferred: dateStr });
       }
+      if (request.method === 'POST' && path === '/diag') {
+        const body = await request.text();
+        await env.plants.put('lastdiag', `${new Date().toISOString()} ${body}`);
+        return json({ ok: true });
+      }
+      if (request.method === 'GET' && path === '/diag') {
+        return json({ diag: (await env.plants.get('lastdiag')) || '(none)' });
+      }
       if (request.method === 'GET' && path === '/test-send') {
         const result = await runMorning(env);
         return json(result);

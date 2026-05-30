@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.8';
+const CACHE_VERSION = 'v0.9.9';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -78,8 +78,9 @@ self.addEventListener('push', (event) => {
     data: { url },
   };
   if (payload.actions) {
+    // Body tap already launches the PWA (Android's default), so no "Open" button
+    // is needed — just offer the defer.
     options.actions = [
-      { action: 'open', title: 'Open' },
       { action: 'defer', title: 'This evening' },
     ];
   }
@@ -122,7 +123,6 @@ self.addEventListener('pushsubscriptionchange', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
-  console.log(`PLANTS-SW notificationclick fired action=${event.action || 'body'}`);
   event.notification.close();
 
   if (event.action === 'defer') {
@@ -134,34 +134,11 @@ self.addEventListener('notificationclick', (event) => {
   const rel = (event.notification.data && event.notification.data.url) || './?tab=today';
   const target = new URL(rel, scope).href;
 
-  event.waitUntil((async () => {
-    let info = `act=${event.action || 'body'}`;
-    try {
-      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      info += ` n=${all.length}`;
-      all.forEach((c, i) => { info += ` [${i}]${c.visibilityState}/foc=${c.focused}/${c.url.startsWith(scope) ? 'in' : 'out'}`; });
-
-      // Only focus a window that's actually visible — focus() is a silent no-op on
-      // a backgrounded/closed PWA here. Otherwise openWindow, which foregrounds the
-      // existing installed PWA (or launches it). Deep-link first, then bare scope
-      // root (exact start_url) as a fallback; Today is the default tab anyway.
-      const visible = all.find((c) => c.url.startsWith(scope) && c.visibilityState === 'visible');
-      if (visible) {
-        await visible.focus();
-        if ('navigate' in visible) { try { await visible.navigate(target); } catch {} }
-        info += ' focusedVisible';
-      } else {
-        let win = await self.clients.openWindow(target);
-        info += ` open1=${win ? 'ok' : 'null'}`;
-        if (!win) { win = await self.clients.openWindow(scope); info += ` open2=${win ? 'ok' : 'null'}`; }
-      }
-    } catch (e) {
-      info += ` ERR=${e.name}:${(e.message || '').slice(0, 50)}`;
-    }
-    console.log(`PLANTS-SW click ${info}`);
-    // Temporary always-on diagnostic so we can see the path taken on-device.
-    try { await self.registration.showNotification('diag', { body: info, tag: 'plants-diag', icon: './icons/icon-192.png' }); } catch {}
-  })());
+  // Call openWindow() synchronously — before any await — so the click's transient
+  // user-activation isn't consumed. On an installed PWA, openWindow foregrounds the
+  // existing instance rather than duplicating it, so this both launches (when closed)
+  // and focuses (when backgrounded).
+  event.waitUntil(self.clients.openWindow(target));
 });
 
 async function deferToWorker() {
