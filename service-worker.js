@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.5';
+const CACHE_VERSION = 'v0.9.6';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -131,32 +131,31 @@ self.addEventListener('notificationclick', (event) => {
   const target = new URL(rel, scope).href;
 
   event.waitUntil((async () => {
-    let info = '';
+    let info = `act=${event.action || 'body'}`;
     try {
       const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      info += `clients=${all.length}`;
-      // Focus an already-open window if there is one; fall through if focus fails.
-      const client = all.find((c) => c.url.startsWith(scope));
-      if (client) {
-        try {
-          await client.focus();
-          if ('navigate' in client) { try { await client.navigate(target); } catch {} }
-          return;
-        } catch (e) { info += ` focusErr=${e.name}`; }
+      info += ` n=${all.length}`;
+      all.forEach((c, i) => { info += ` [${i}]${c.visibilityState}/foc=${c.focused}/${c.url.startsWith(scope) ? 'in' : 'out'}`; });
+
+      // Only focus a window that's actually visible — focus() is a silent no-op on
+      // a backgrounded/closed PWA here. Otherwise openWindow, which foregrounds the
+      // existing installed PWA (or launches it). Deep-link first, then bare scope
+      // root (exact start_url) as a fallback; Today is the default tab anyway.
+      const visible = all.find((c) => c.url.startsWith(scope) && c.visibilityState === 'visible');
+      if (visible) {
+        await visible.focus();
+        if ('navigate' in visible) { try { await visible.navigate(target); } catch {} }
+        info += ' focusedVisible';
+      } else {
+        let win = await self.clients.openWindow(target);
+        info += ` open1=${win ? 'ok' : 'null'}`;
+        if (!win) { win = await self.clients.openWindow(scope); info += ` open2=${win ? 'ok' : 'null'}`; }
       }
-      // No focusable window — launch the PWA. Try the deep-link, then fall back to
-      // the bare scope root (exact start_url) which some Android builds require to
-      // launch an installed PWA. (Today is the default tab, so the root still lands
-      // on Today.)
-      let win = await self.clients.openWindow(target);
-      info += ` win1=${win ? 'ok' : 'null'}`;
-      if (!win) { win = await self.clients.openWindow(scope); info += ` win2=${win ? 'ok' : 'null'}`; }
-      if (win) return;
     } catch (e) {
-      info += ` err=${e.name}:${(e.message || '').slice(0, 60)}`;
+      info += ` ERR=${e.name}:${(e.message || '').slice(0, 50)}`;
     }
-    // Only reached if nothing opened — surface why, on-device (temporary diag).
-    try { await self.registration.showNotification('Open failed (diag)', { body: info, tag: 'plants-diag', icon: './icons/icon-192.png' }); } catch {}
+    // Temporary always-on diagnostic so we can see the path taken on-device.
+    try { await self.registration.showNotification('diag', { body: info, tag: 'plants-diag', icon: './icons/icon-192.png' }); } catch {}
   })());
 });
 
