@@ -3,11 +3,9 @@
 // ------------------------------------------------------------------
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(() => sendWorkerConfigToSW())
-      .catch((err) => {
-        console.error('Service worker registration failed', err);
-      });
+    navigator.serviceWorker.register('./service-worker.js').catch((err) => {
+      console.error('Service worker registration failed', err);
+    });
   });
 
   // Auto-reload when a new SW takes control so updates land without a second refresh.
@@ -58,18 +56,6 @@ async function postToWorker(path, body, method = 'POST') {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json().catch(() => ({}));
-}
-
-// Hand the worker URL + token to the SW so notificationclick (page closed) can POST /defer.
-async function sendWorkerConfigToSW() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    const reg = await navigator.serviceWorker.ready;
-    (reg.active || navigator.serviceWorker.controller)?.postMessage({
-      type: 'worker-config',
-      config: { url: WORKER_URL, token: PUSH_TOKEN },
-    });
-  } catch {}
 }
 
 // Absolute next-due date (YYYY-MM-DD, local) = base + cadence calendar days.

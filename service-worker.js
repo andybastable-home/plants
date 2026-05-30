@@ -1,5 +1,5 @@
 // Bump CACHE_VERSION whenever shell files change so updates roll cleanly.
-const CACHE_VERSION = 'v0.9.2';
+const CACHE_VERSION = 'v0.9.3';
 const CACHE_NAME = `plants-shell-${CACHE_VERSION}`;
 
 const SHELL = [
@@ -83,40 +83,43 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+// Worker endpoint for the defer action. Hardcoded here (not passed from the page)
+// because when the app is closed the SW is killed and revived to handle the
+// notification — any in-memory config from the page would be gone. The token is
+// already a public client const; it only guards writes to Andy's own KV.
+const WORKER_URL = 'https://plants.plants-andyb.workers.dev';
+const PUSH_TOKEN = 'SuperSecretPlants837492!';
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || './?tab=today';
 
   if (event.action === 'defer') {
-    // Fire-and-forget defer to the worker; config is injected at install via the
-    // page (postMessage) — fall back to silently closing if not configured.
     event.waitUntil(deferToWorker());
     return;
   }
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      for (const client of clients) {
-        if ('focus' in client) { client.navigate?.(url); return client.focus(); }
-      }
-      return self.clients.openWindow(url);
-    })
-  );
-});
+  // Resolve to an absolute URL — a relative one can silently no-op in
+  // clients.openWindow() on Android when the app is closed.
+  const rel = (event.notification.data && event.notification.data.url) || './?tab=today';
+  const target = new URL(rel, self.registration.scope).href;
 
-// The page hands the worker URL + bearer token to the SW so notificationclick
-// (which runs with no page open) can POST /defer.
-let WORKER_CFG = null;
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'worker-config') WORKER_CFG = event.data.config;
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of all) {
+      if (client.url.startsWith(self.registration.scope) && 'focus' in client) {
+        if ('navigate' in client) { try { await client.navigate(target); } catch {} }
+        return client.focus();
+      }
+    }
+    return self.clients.openWindow(target);
+  })());
 });
 
 async function deferToWorker() {
-  if (!WORKER_CFG?.url || !WORKER_CFG?.token) return;
   try {
-    await fetch(`${WORKER_CFG.url}/defer`, {
+    await fetch(`${WORKER_URL}/defer`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${WORKER_CFG.token}` },
+      headers: { Authorization: `Bearer ${PUSH_TOKEN}` },
     });
   } catch {}
 }

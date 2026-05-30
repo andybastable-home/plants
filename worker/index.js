@@ -67,7 +67,7 @@ function buildBody(water, feed) {
   const parts = [];
   if (water) parts.push(`${water} to water`);
   if (feed) parts.push(`${feed} to feed`);
-  return `${parts.join(' · ')} 🌱`;
+  return `${parts.join(' · ')} today 🌱`;
 }
 
 async function sendPush(env, payloadObj) {
