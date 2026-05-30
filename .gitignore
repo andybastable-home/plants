@@ -28,3 +28,8 @@ npm-debug.log*
 
 # AI context exports
 *.aicontext
+
+# Worker (Cloudflare) build artifacts
+worker/node_modules/
+worker/.wrangler/
+worker/package-lock.json

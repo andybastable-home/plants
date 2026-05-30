@@ -3,9 +3,11 @@
 // ------------------------------------------------------------------
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch((err) => {
-      console.error('Service worker registration failed', err);
-    });
+    navigator.serviceWorker.register('./service-worker.js')
+      .then(() => sendWorkerConfigToSW())
+      .catch((err) => {
+        console.error('Service worker registration failed', err);
+      });
   });
 
   // Auto-reload when a new SW takes control so updates land without a second refresh.
@@ -15,6 +17,183 @@ if ('serviceWorker' in navigator) {
     reloading = true;
     window.location.reload();
   });
+}
+
+// ------------------------------------------------------------------
+// Push notifications (Phase 7)
+// ------------------------------------------------------------------
+// Fill WORKER_URL after `wrangler deploy` prints it
+// (e.g. https://plants.<your-subdomain>.workers.dev). No trailing slash.
+const WORKER_URL      = 'https://plants.REPLACE-ME.workers.dev';
+const PUSH_TOKEN      = 'SuperSecretPlants837492!';
+const VAPID_PUBLIC_KEY = 'BG3-MCSSCdyPhV__rDZtrOZryJUjC2qNEH8owW5hVy0dH4IO3TpFwRtUHKOhMvTqsJq1g16hvEjqw3ap-8knN4k';
+
+const NOTIFY_ENABLED_KEY = 'plants.notifyEnabled';
+const NOTIFY_PENDING_KEY = 'plants.notifyPending';
+
+function notifySupported() {
+  return 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function postToWorker(path, body, method = 'POST') {
+  const res = await fetch(`${WORKER_URL}${path}`, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${PUSH_TOKEN}` },
+    body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json().catch(() => ({}));
+}
+
+// Hand the worker URL + token to the SW so notificationclick (page closed) can POST /defer.
+async function sendWorkerConfigToSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    (reg.active || navigator.serviceWorker.controller)?.postMessage({
+      type: 'worker-config',
+      config: { url: WORKER_URL, token: PUSH_TOKEN },
+    });
+  } catch {}
+}
+
+// Absolute next-due date (YYYY-MM-DD, local) = base + cadence calendar days.
+// Mirrors dueStatus(): base is the last event date, or created_at if never logged.
+function nextDueISO(baseDate, cadenceDays) {
+  if (!cadenceDays) return null;
+  const d = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  d.setDate(d.getDate() + cadenceDays);
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+async function buildSchedule() {
+  const [plants, lastEventsMap] = await Promise.all([getAllPlants(), getLastCareEventsMap()]);
+  return plants.map((p) => {
+    const last = lastEventsMap.get(p.id) || { water: null, feed: null };
+    const created = new Date(p.created_at);
+    return {
+      name: p.name,
+      nextWaterDue: nextDueISO(last.water || created, p.water_days),
+      nextFeedDue:  nextDueISO(last.feed  || created, p.feed_days),
+    };
+  });
+}
+
+// Push the schedule blob on every mutation (no-op unless reminders are enabled).
+// Queues a retry flag on failure; retried on next app-open/online.
+async function pushScheduleToWorker() {
+  if (localStorage.getItem(NOTIFY_ENABLED_KEY) !== '1') return;
+  try {
+    const blob = await buildSchedule();
+    await postToWorker('/schedule', blob);
+    localStorage.removeItem(NOTIFY_PENDING_KEY);
+  } catch (err) {
+    localStorage.setItem(NOTIFY_PENDING_KEY, '1');
+    console.warn('[push] schedule push failed:', err.message);
+  }
+}
+window.pushScheduleToWorker = pushScheduleToWorker;
+
+async function enableNotifications() {
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error(perm === 'denied' ? 'blocked' : 'dismissed');
+  const reg = await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  await postToWorker('/subscribe', sub);
+  localStorage.setItem(NOTIFY_ENABLED_KEY, '1');
+  await pushScheduleToWorker();
+}
+
+async function disableNotifications() {
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if (sub) await sub.unsubscribe();
+  try { await postToWorker('/unsubscribe', {}); } catch {}
+  localStorage.removeItem(NOTIFY_ENABLED_KEY);
+}
+
+function setNotifyStatus(text, tone) {
+  const el = document.getElementById('notify-status');
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.remove('is-error', 'is-info', 'is-ok');
+  if (tone) el.classList.add(`is-${tone}`);
+}
+
+function renderNotifyUI() {
+  const toggle = document.getElementById('notify-toggle');
+  const test   = document.getElementById('notify-test');
+  if (!toggle) return;
+  if (!notifySupported()) {
+    toggle.disabled = true;
+    setNotifyStatus('Notifications not supported here.', 'error');
+    return;
+  }
+  const enabled = localStorage.getItem(NOTIFY_ENABLED_KEY) === '1';
+  toggle.textContent = enabled ? 'Disable' : 'Enable';
+  if (test) test.hidden = !enabled;
+  if (Notification.permission === 'denied') setNotifyStatus('Blocked — enable notifications in browser/app settings.', 'error');
+  else if (enabled) setNotifyStatus('On — daily reminder at ~7:30am when something’s due.', 'ok');
+  else setNotifyStatus('', '');
+}
+
+function bindNotifyUI() {
+  const toggle = document.getElementById('notify-toggle');
+  const test   = document.getElementById('notify-test');
+  if (!toggle) return;
+
+  toggle.addEventListener('click', async () => {
+    toggle.disabled = true;
+    try {
+      if (localStorage.getItem(NOTIFY_ENABLED_KEY) === '1') {
+        await disableNotifications();
+        setNotifyStatus('Reminders off.', 'info');
+      } else {
+        setNotifyStatus('Enabling…', 'info');
+        await enableNotifications();
+        setNotifyStatus('Reminders on — schedule sent.', 'ok');
+      }
+    } catch (err) {
+      const msg = err.message === 'blocked' ? 'Permission blocked — enable in settings.'
+        : err.message === 'dismissed' ? 'Permission dismissed — tap Enable again.'
+        : `Failed: ${err.message.slice(0, 80)}`;
+      setNotifyStatus(msg, 'error');
+    } finally {
+      toggle.disabled = false;
+      renderNotifyUI();
+    }
+  });
+
+  if (test) {
+    test.addEventListener('click', async () => {
+      setNotifyStatus('Sending test…', 'info');
+      try {
+        const data = await postToWorker('/test-send', null, 'GET');
+        setNotifyStatus(data.sent ? 'Test sent ✓ — check your phone.' : `Nothing due (${data.reason || 'silent'}).`, data.sent ? 'ok' : 'info');
+      } catch (err) {
+        setNotifyStatus(`Test failed: ${err.message.slice(0, 80)}`, 'error');
+      }
+    });
+  }
+
+  renderNotifyUI();
 }
 
 // ------------------------------------------------------------------
@@ -1319,7 +1498,15 @@ function init() {
     if (e.key === 'Escape' && !els.overlay.hidden) closeOverlay();
   });
 
-  setTab('today');
+  bindNotifyUI();
+
+  // Retry a queued schedule push (e.g. the last mutation failed while offline).
+  if (localStorage.getItem(NOTIFY_PENDING_KEY)) pushScheduleToWorker();
+
+  // Deep-link from a tapped notification: ./?tab=today
+  const wantTab = new URLSearchParams(location.search).get('tab');
+  const validTabs = ['today', 'upcoming', 'plants'];
+  setTab(validTabs.includes(wantTab) ? wantTab : 'today');
 }
 
 init();

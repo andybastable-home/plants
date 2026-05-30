@@ -1,0 +1,15 @@
+{
+  "name": "plants-push-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "@block65/webcrypto-web-push": "latest"
+  },
+  "devDependencies": {
+    "wrangler": "^3"
+  }
+}

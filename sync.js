@@ -306,9 +306,12 @@ async function backupToSheet() {
 
 let backupTimer = null;
 function scheduleBackup() {
-  if (!getSheetId()) return;
   clearTimeout(backupTimer);
   backupTimer = setTimeout(() => {
+    // Push the notification schedule on every mutation, even if Sheets isn't
+    // connected (it no-ops unless reminders are enabled). Reuses this debounce.
+    window.pushScheduleToWorker?.();
+    if (!getSheetId()) return;
     backupToSheet().catch(err => console.warn('[sync] scheduleBackup error:', err.message));
   }, 2000);
 }

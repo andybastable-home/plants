@@ -1,0 +1,22 @@
+name = "plants"
+main = "index.js"
+compatibility_date = "2024-11-01"
+
+# Cron candidates in UTC. The scheduled handler only sends on the trigger that
+# equals the target London wall-clock time, so this self-corrects across BST/GMT:
+#   06:30 / 07:30 UTC -> exactly one is 07:30 London (morning)
+#   17:00 / 18:00 UTC -> exactly one is 18:00 London (evening defer)
+[triggers]
+crons = ["30 6 * * *", "30 7 * * *", "0 17 * * *", "0 18 * * *"]
+
+[[kv_namespaces]]
+binding = "plants"
+id = "02fd1fc3822f4abaa6be12fbbddc0ae7"
+
+[vars]
+# Public VAPID key is not secret — safe to commit.
+VAPID_PUBLIC_KEY = "BG3-MCSSCdyPhV__rDZtrOZryJUjC2qNEH8owW5hVy0dH4IO3TpFwRtUHKOhMvTqsJq1g16hvEjqw3ap-8knN4k"
+
+# Secrets (NOT here — set once via wrangler so they never hit the public repo):
+#   wrangler secret put VAPID_PRIVATE_KEY
+#   wrangler secret put PUSH_TOKEN
