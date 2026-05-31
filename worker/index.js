@@ -102,6 +102,15 @@ async function runMorning(env) {
   return sendPush(env, { title: 'Plants 🌱', body: buildBody(water, feed), url: './?tab=today', actions: true });
 }
 
+// Run `fn` at most once per UTC-ish day for the given guard key. Cloudflare cron
+// firings can be delayed and (rarely) retried, so without this a late/duplicate
+// firing in the same hour window could double-send.
+async function runOnce(env, key, fn) {
+  if (await env.plants.get(key)) { console.log(`[push] ${key} already ran — skipping`); return { sent: false, reason: 'already ran' }; }
+  await env.plants.put(key, '1', { expirationTtl: 36 * 3600 });
+  return fn();
+}
+
 async function runEvening(env) {
   const { dateStr } = londonNow();
   const deferred = await env.plants.get(`deferred:${dateStr}`);
@@ -161,12 +170,22 @@ export default {
   },
 
   async scheduled(event, env, ctx) {
-    const { hour, minute } = londonNow();
-    console.log(`[push] cron fired — London ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
-    if (hour === 7 && minute === 30) {
-      ctx.waitUntil(runMorning(env));
-    } else if (hour === 18 && minute === 0) {
-      ctx.waitUntil(runEvening(env));
+    const { hour, minute, dateStr } = londonNow();
+    const hhmm = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    console.log(`[push] cron fired — London ${hhmm} (${dateStr})`);
+    // Record the fire so it can be inspected via GET /diag without wrangler tail.
+    ctx.waitUntil(env.plants.put('cron-last', `${new Date().toISOString()} London ${hhmm}`));
+
+    // Match on the HOUR, not exact minute: Cloudflare cron firings are routinely
+    // delayed by a few minutes, so an `=== 30`/`=== 0` gate silently drops them.
+    // The two DST candidate triggers still land in different hours either way:
+    //   morning target 07:30 London -> hour 7 in both BST and GMT
+    //   evening target 18:00 London -> hour 18 in both BST and GMT
+    // The off-season candidate lands an hour away, so there's no ambiguity.
+    if (hour === 7) {
+      ctx.waitUntil(runOnce(env, `sent:morning:${dateStr}`, () => runMorning(env)));
+    } else if (hour === 18) {
+      ctx.waitUntil(runOnce(env, `sent:evening:${dateStr}`, () => runEvening(env)));
     } else {
       console.log('[push] not a London send-time, skipping');
     }

@@ -21,9 +21,14 @@ and `?tab=` deep-link. Settings has a **Reminders** section (Enable/Disable + Se
 Notification assets: `icons/icon-192.png` (colour) + `icons/badge-96.png` (mono).
 
 ### Remaining (Andy, outside Claude)
-1. `cd worker && npm install`; `wrangler secret put VAPID_PRIVATE_KEY` + `PUSH_TOKEN`; `wrangler deploy`.
-2. Put the printed Worker URL into `WORKER_URL` in `app.js` (replace `REPLACE-ME`), commit, redeploy Pages.
-3. On the Pixel 8a PWA: Settings → Reminders → Enable; with something due hit **Send test** → notification with counts; tap → opens Today. With nothing due, test stays silent. See plan §Verification.
+1. **Redeploy the worker for the cron fix:** `cd worker && wrangler deploy`. The
+   `scheduled()` handler previously gated on an exact `minute === 30/0`, which
+   Cloudflare's delayed cron firings silently missed (no 7:30 morning push, hence
+   no defer, hence no evening push). Now it matches on the hour + a per-day KV
+   dedupe guard. After firing, `GET /diag`-style `cron-last` KV key records the
+   last fire — check the worker dashboard logs / KV to confirm crons are running.
+2. Verify on the Pixel 8a over the next morning(s): a 7:30 London push when
+   something's due; tapping "This evening" then yields the ~18:00 evening push.
 
 ## Next phase
 
