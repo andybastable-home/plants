@@ -156,7 +156,11 @@ export default {
         return json({ ok: true });
       }
       if (request.method === 'GET' && path === '/diag') {
-        return json({ diag: (await env.plants.get('lastdiag')) || '(none)' });
+        return json({
+          diag: (await env.plants.get('lastdiag')) || '(none)',
+          cronLast: (await env.plants.get('cron-last')) || '(none)',
+          hasSubscription: !!(await env.plants.get('subscription')),
+        });
       }
       if (request.method === 'GET' && path === '/test-send') {
         const result = await runMorning(env);
