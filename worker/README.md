@@ -14,8 +14,12 @@ Tiny Cloudflare Worker that sends the daily "what's due" Web Push. Deployed
   against Cloudflare's delayed/dropped firings: the target hour gets ~12 attempts, not
   1. (The old twice-daily UTC schedule missed a single delayed firing, which silently
   killed the whole day's morning → defer → evening chain — the bug this replaces.)
-- Morning: counts plants due today; if > 0, pushes `"2 to water · 1 to feed 🌱"`.
-  If nothing's due it stays silent (so the notification is never noise).
+- Morning: counts plants due today; if > 0, pushes `"2 to water · 1 to feed 🌱"` at
+  **high urgency** so FCM wakes the (likely Dozing) phone immediately — no app-open
+  needed; Web Push delivers to the **closed PWA**. If nothing's due it stays silent.
+  A valid subscription persists for months and is kept warm by these daily pushes — it
+  does not need the app reopened. The per-day send guard is only set once a push
+  actually succeeds, so a transient miss is retried across the hour's ~12 firings.
 - Evening: only fires if Andy tapped **This evening** that day *and* something is
   still due.
 

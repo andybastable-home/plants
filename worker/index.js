@@ -26,7 +26,7 @@ const SUBJECT = 'mailto:andy.bastable@gmail.com';
 // Worker build stamp — bump on every worker change. Surfaced via GET /diag and in the
 // heartbeat push so Andy can confirm which worker code is actually live after a
 // `wrangler deploy` (the worker analog of the PWA CACHE_VERSION).
-const WORKER_BUILD = '2026-06-02.1';
+const WORKER_BUILD = '2026-06-02.2';
 
 // ---- helpers ----
 function cors() {
@@ -91,7 +91,12 @@ async function sendPush(env, payloadObj) {
   const subRaw = await env.plants.get('subscription');
   if (!subRaw) { console.log('[push] no subscription stored'); return { sent: false, reason: 'no subscription' }; }
   const subscription = JSON.parse(subRaw);
-  const message = { data: JSON.stringify(payloadObj), options: { ttl: 12 * 3600, urgency: 'normal' } };
+  // urgency:'high' so FCM wakes the phone immediately. The whole point of this feature
+  // is to remind Andy WITHOUT him opening the app, so the push lands on a phone that's
+  // been in Doze all night — a 'normal' push gets batched/deferred until the next Doze
+  // maintenance window (or until he picks up the phone), which can swallow a 7:30 alarm.
+  // One push/day, so the battery cost of high urgency is irrelevant.
+  const message = { data: JSON.stringify(payloadObj), options: { ttl: 12 * 3600, urgency: 'high' } };
   const payload = await buildPushPayload(message, subscription, {
     subject: SUBJECT,
     publicKey: env.VAPID_PUBLIC_KEY,
@@ -119,13 +124,18 @@ async function runMorning(env) {
   return sendPush(env, { title: 'Plants 🌱', body: buildBody(water, feed), url: './?tab=today', actions: true });
 }
 
-// Run `fn` at most once per UTC-ish day for the given guard key. Cloudflare cron
-// firings can be delayed and (rarely) retried, so without this a late/duplicate
-// firing in the same hour window could double-send.
+// Run `fn` at most once per day for the given guard key — but only mark it done once a
+// push has actually gone out. The */5 cron calls this ~12× during the target hour, so a
+// transient failure (no subscription in KV yet, a 5xx from the push service, nothing due
+// *yet*) no longer burns the day: a later firing retries until one succeeds, then the
+// guard (36h TTL) blocks duplicates. Setting the guard *before* running — as this did —
+// turned 12 chances into 1 chance that, this morning, happened to fail (the cron ran and
+// saw 18 due, but hasSubscription was false, so nothing sent and the day was marked done).
 async function runOnce(env, key, fn) {
-  if (await env.plants.get(key)) { console.log(`[push] ${key} already ran — skipping`); return { sent: false, reason: 'already ran' }; }
-  await env.plants.put(key, '1', { expirationTtl: 36 * 3600 });
-  return fn();
+  if (await env.plants.get(key)) { console.log(`[push] ${key} already done — skipping`); return { sent: false, reason: 'already ran' }; }
+  const result = await fn();
+  if (result && result.sent) await env.plants.put(key, '1', { expirationTtl: 36 * 3600 });
+  return result;
 }
 
 async function runEvening(env) {

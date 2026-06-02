@@ -20,24 +20,30 @@ for closed-page `/defer`). `app.js` has the subscribe/enable flow, `buildSchedul
 and `?tab=` deep-link. Settings has a **Reminders** section (Enable/Disable + Send test).
 Notification assets: `icons/icon-192.png` (colour) + `icons/badge-96.png` (mono).
 
-### Remaining (Andy, outside Claude) — worker redeploy required
-Scheduled pushes still weren't arriving (test push works fine, so delivery is OK — the
-fault is cron firing). The earlier hour-match fix was committed but almost certainly
-never deployed, and a *single* firing per target was fragile anyway: Cloudflare
-delays/drops firings, and one miss killed the whole morning → defer → evening chain.
-Now consolidated to **one `*/5 * * * *` cron** (DST-proof, per-day dedupe-guarded,
-~12 attempts/hour) plus an **unconditional heartbeat** for end-to-end cron testing.
-Worker-only change — the PWA on the phone is unchanged (no reinstall, still v0.9.0).
+### Remaining (Andy, outside Claude)
+Deploy #1 done (build `2026-06-02.1` live). The `/diag` it added found the real cause:
+the cron **was** firing and the morning logic **did** run (`sentMorningToday:true`, 18
+due) — but **`hasSubscription:false`**, so there was nothing to push to. The stored
+subscription had been dropped (expired → 410 → auto-deleted by `sendPush`). In-app tests
+still "worked" because holding the awake phone masks two things: the missing sub (the
+app re-subscribes on open) and Doze batching. Fixes: (a) per-day guard now sets only
+*after* a push succeeds, so a transient miss is retried across the hour's ~12 `*/5`
+firings; (b) push **urgency raised to `high`** so FCM wakes a Dozing phone immediately
+rather than batching the 7:30 alarm until the phone is next picked up. The reminder is
+meant to fire on a **closed, idle PWA without opening the app** — that's standard Web
+Push and works once the subscription is healthy (daily pushes keep it warm). Worker-only;
+PWA unchanged (still v0.9.0).
 
-1. **Deploy:** `cd worker && wrangler deploy`. Confirm it prints `*/5 * * * *`.
-2. **Confirm live + clock:** open on the phone
-   `…workers.dev/diag?token=<PUSH_TOKEN>` → `build` = `2026-06-02.1`, `nowLondon`
-   matches real London time, `hasSubscription: true`, `cronLast` < ~5 min old.
-3. **Prove cron firing:** `…/heartbeat-on?token=…` → expect a "Plants ⏱ cron test"
-   push within 5 min, then `…/heartbeat-off?token=…`. (Full decision tree in
-   `worker/README.md`.)
-4. **Verify the real schedule** over the next morning(s): a 7:30 London push when
-   something's due; tapping "This evening" then yields the ~18:00 evening push.
+1. **Redeploy** for the guard fix: `cd worker && wrangler deploy` → confirm `*/5 * * * *`.
+2. **Re-establish the subscription:** open the PWA → Settings → Reminders → **Disable,
+   then Enable** (forces a fresh `subscribe()` — a plain re-open could re-store the dead
+   sub). Reload `/diag?token=<PUSH_TOKEN>` → confirm **`hasSubscription:true`** and
+   `build` = `2026-06-02.2`.
+3. **Prove end-to-end:** `…/heartbeat-on?token=…` → expect a "Plants ⏱ cron test" push
+   within 5 min (do step 2 first!), then `…/heartbeat-off?token=…`. Also check `cronLast`
+   is now < 5 min old (proves the new `*/5` is ticking).
+4. **Verify the real schedule** next morning: a 7:30 push when due; "This evening" then
+   yields the ~18:00 push.
 
 ## Next phase
 
