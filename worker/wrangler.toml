@@ -4,12 +4,18 @@ compatibility_date = "2024-11-01"
 # web-push lib imports node:crypto — needs the Node compat shim on Workers.
 compatibility_flags = ["nodejs_compat"]
 
-# Cron candidates in UTC. The scheduled handler only sends on the trigger that
-# equals the target London wall-clock time, so this self-corrects across BST/GMT:
-#   06:30 / 07:30 UTC -> exactly one is 07:30 London (morning)
-#   17:00 / 18:00 UTC -> exactly one is 18:00 London (evening defer)
+# One frequent trigger drives scheduled(). It runs every 5 min all day; the handler
+# reads Europe/London per-fire and acts only in the target hour (07 morning / 18 evening
+# defer), made once-per-day by a KV dedupe guard. Why not the old twice-daily UTC crons?
+# Cloudflare delays and sometimes drops an individual firing, and a single firing per
+# target was silently missed (no morning push -> no defer offered -> no evening push) —
+# the exact symptom seen. With */5 the target hour gets ~12 attempts, so a few delays no
+# longer matter. DST-proof (hour computed in London) and it doubles as the cron health
+# beacon + heartbeat test. ~288 firings/day, KV writes well under the free 1k/day cap;
+# raise to */10 or */15 if you ever want it leaner. Old schedule, for reference/revert:
+#   crons = ["30 6 * * *", "30 7 * * *", "0 17 * * *", "0 18 * * *"]
 [triggers]
-crons = ["30 6 * * *", "30 7 * * *", "0 17 * * *", "0 18 * * *"]
+crons = ["*/5 * * * *"]
 
 [[kv_namespaces]]
 binding = "plants"

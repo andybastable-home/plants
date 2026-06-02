@@ -20,14 +20,23 @@ for closed-page `/defer`). `app.js` has the subscribe/enable flow, `buildSchedul
 and `?tab=` deep-link. Settings has a **Reminders** section (Enable/Disable + Send test).
 Notification assets: `icons/icon-192.png` (colour) + `icons/badge-96.png` (mono).
 
-### Remaining (Andy, outside Claude)
-1. **Redeploy the worker for the cron fix:** `cd worker && wrangler deploy`. The
-   `scheduled()` handler previously gated on an exact `minute === 30/0`, which
-   Cloudflare's delayed cron firings silently missed (no 7:30 morning push, hence
-   no defer, hence no evening push). Now it matches on the hour + a per-day KV
-   dedupe guard. After firing, `GET /diag`-style `cron-last` KV key records the
-   last fire — check the worker dashboard logs / KV to confirm crons are running.
-2. Verify on the Pixel 8a over the next morning(s): a 7:30 London push when
+### Remaining (Andy, outside Claude) — worker redeploy required
+Scheduled pushes still weren't arriving (test push works fine, so delivery is OK — the
+fault is cron firing). The earlier hour-match fix was committed but almost certainly
+never deployed, and a *single* firing per target was fragile anyway: Cloudflare
+delays/drops firings, and one miss killed the whole morning → defer → evening chain.
+Now consolidated to **one `*/5 * * * *` cron** (DST-proof, per-day dedupe-guarded,
+~12 attempts/hour) plus an **unconditional heartbeat** for end-to-end cron testing.
+Worker-only change — the PWA on the phone is unchanged (no reinstall, still v0.9.0).
+
+1. **Deploy:** `cd worker && wrangler deploy`. Confirm it prints `*/5 * * * *`.
+2. **Confirm live + clock:** open on the phone
+   `…workers.dev/diag?token=<PUSH_TOKEN>` → `build` = `2026-06-02.1`, `nowLondon`
+   matches real London time, `hasSubscription: true`, `cronLast` < ~5 min old.
+3. **Prove cron firing:** `…/heartbeat-on?token=…` → expect a "Plants ⏱ cron test"
+   push within 5 min, then `…/heartbeat-off?token=…`. (Full decision tree in
+   `worker/README.md`.)
+4. **Verify the real schedule** over the next morning(s): a 7:30 London push when
    something's due; tapping "This evening" then yields the ~18:00 evening push.
 
 ## Next phase
