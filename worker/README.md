@@ -56,7 +56,8 @@ Tappable from the phone (token is the public single-user client const):
 - **Health check —** `https://plants.plants-andyb.workers.dev/diag?token=SuperSecretPlants837492!`
   Returns `build` (which deployed code is live), `nowLondon` (the worker's own clock —
   sanity-check the timezone), `cronLast` (should be < ~5 min old when crons are
-  healthy), `hasSubscription`, `dueToday`, and today's `sentMorning/EveningToday` guards.
+  healthy), `hasSubscription`, `subRegistered`/`subDeleted` (the subscription's lifecycle —
+  see below), `dueToday`, and today's `sentMorning/EveningToday` guards.
 - **Unconditional cron test —** hit `…/heartbeat-on?token=…`; within ≤5 min the phone
   gets a "Plants ⏱ cron test" push *regardless of whether anything is due*, proving the
   scheduled handler runs end-to-end. Turn off with `…/heartbeat-off?token=…` (or let it
@@ -66,6 +67,14 @@ Decision tree when a scheduled push goes missing:
 - `cronLast` stale / `(none)` → crons aren't firing. Re-run `wrangler deploy`; confirm
   the dashboard (Worker → Settings → Triggers) shows `*/5 * * * *` and `wrangler
   deployments list` has your latest. An old `build` in `/diag` means the deploy didn't take.
+- `cronLast` fresh but `hasSubscription:false` with a fresh **`subDeleted`** → the most
+  common failure: the subscription went **`Gone` (410)** and the worker deleted it. On a
+  never-opened PWA, Android reclaims the "unused" app's FCM channel overnight, so the sub
+  is dead by the 07:00 send. `pushsubscriptionchange` doesn't recover this (it's for
+  *browser* rotation, not OS teardown). **Fix is device-side:** set the PWA's battery to
+  *Unrestricted* and disable "Pause app activity if unused" / auto-revoke-permissions, then
+  re-open once to re-subscribe. `subRegistered` vs `subDeleted` timestamps show the
+  overnight death and whether anything re-registered.
 - `cronLast` fresh but no heartbeat → push send failing from cron (rare, since
   `/test-send` works) — read the `[push] sent status=…` line in `wrangler tail`.
 - heartbeat arrives but no 07:30 push → nothing was due that morning (silent by design);

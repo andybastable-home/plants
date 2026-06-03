@@ -12,6 +12,8 @@
 //   sent:morning:<date> / sent:evening:<date> — per-day send dedupe guards (TTL ~36h)
 //   cron-last             — ISO + London HH:MM of the most recent cron firing
 //   heartbeat             — when set, every cron firing sends a test push (TTL ~2h)
+//   sub-registered        — ISO of the last /subscribe write (page sync or SW rotation)
+//   sub-deleted           — ISO + status of the last Gone-triggered subscription delete
 //   lastdiag              — last client-posted diag string
 //
 // Auth: every endpoint takes the token as `Authorization: Bearer <PUSH_TOKEN>` or a
@@ -26,7 +28,7 @@ const SUBJECT = 'mailto:andy.bastable@gmail.com';
 // Worker build stamp — bump on every worker change. Surfaced via GET /diag and in the
 // heartbeat push so Andy can confirm which worker code is actually live after a
 // `wrangler deploy` (the worker analog of the PWA CACHE_VERSION).
-const WORKER_BUILD = '2026-06-02.2';
+const WORKER_BUILD = '2026-06-03.1';
 
 // ---- helpers ----
 function cors() {
@@ -105,6 +107,10 @@ async function sendPush(env, payloadObj) {
   const res = await fetch(subscription.endpoint, payload);
   if (res.status === 404 || res.status === 410) {
     await env.plants.delete('subscription'); // expired/unsubscribed at the push service
+    // Record the death so /diag can later show *when* the sub went Gone (vs. never
+    // existed). On a never-opened PWA, Android reclaims the FCM channel of "unused"
+    // apps overnight; this timestamp is how we prove that's what happened.
+    await env.plants.put('sub-deleted', `${new Date().toISOString()} status=${res.status}`);
     console.log('[push] subscription gone, deleted');
   }
   console.log(`[push] sent status=${res.status} body="${payloadObj.body}"`);
@@ -177,6 +183,9 @@ export default {
       if (request.method === 'POST' && path === '/subscribe') {
         const sub = await request.json();
         await env.plants.put('subscription', JSON.stringify(sub));
+        // Stamp the (re)registration so /diag can show the sub's age and whether a
+        // SW pushsubscriptionchange re-registered it after an overnight Gone delete.
+        await env.plants.put('sub-registered', new Date().toISOString());
         return json({ ok: true });
       }
       if (request.method === 'POST' && path === '/schedule') {
@@ -220,6 +229,8 @@ export default {
           cronLast: (await env.plants.get('cron-last')) || '(none)',
           heartbeat: (await env.plants.get('heartbeat')) ? 'on' : 'off',
           hasSubscription: !!(await env.plants.get('subscription')),
+          subRegistered: (await env.plants.get('sub-registered')) || '(none)',
+          subDeleted: (await env.plants.get('sub-deleted')) || '(none)',
           scheduleCount: sched.length,
           dueToday: { water, feed, total },
           sentMorningToday: !!(await env.plants.get(`sent:morning:${now.dateStr}`)),

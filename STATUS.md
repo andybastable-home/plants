@@ -20,30 +20,30 @@ for closed-page `/defer`). `app.js` has the subscribe/enable flow, `buildSchedul
 and `?tab=` deep-link. Settings has a **Reminders** section (Enable/Disable + Send test).
 Notification assets: `icons/icon-192.png` (colour) + `icons/badge-96.png` (mono).
 
-### Remaining (Andy, outside Claude)
-Deploy #1 done (build `2026-06-02.1` live). The `/diag` it added found the real cause:
-the cron **was** firing and the morning logic **did** run (`sentMorningToday:true`, 18
-due) — but **`hasSubscription:false`**, so there was nothing to push to. The stored
-subscription had been dropped (expired → 410 → auto-deleted by `sendPush`). In-app tests
-still "worked" because holding the awake phone masks two things: the missing sub (the
-app re-subscribes on open) and Doze batching. Fixes: (a) per-day guard now sets only
-*after* a push succeeds, so a transient miss is retried across the hour's ~12 `*/5`
-firings; (b) push **urgency raised to `high`** so FCM wakes a Dozing phone immediately
-rather than batching the 7:30 alarm until the phone is next picked up. The reminder is
-meant to fire on a **closed, idle PWA without opening the app** — that's standard Web
-Push and works once the subscription is healthy (daily pushes keep it warm). Worker-only;
-PWA unchanged (still v0.9.0).
+### Remaining (Andy, outside Claude) — the subscription keeps dying overnight
+Cron is **not** the problem (proven: `cronLast` always fresh, the */5 ticks fine). The
+problem is the **push subscription goes `Gone` (410) overnight on the never-opened PWA**:
+two mornings running, `/diag` showed `hasSubscription:false`. At 07:00 the worker tries to
+send, gets 410, deletes the dead sub → no reminder. `pushsubscriptionchange` doesn't save
+it — that event is for *browser* rotation, not Android's OS-level teardown of an "unused"
+app's FCM channel. A PWA that's by-design never opened is exactly what Android adaptive-
+battery / auto-revoke-permissions reclaims.
 
-1. **Redeploy** for the guard fix: `cd worker && wrangler deploy` → confirm `*/5 * * * *`.
-2. **Re-establish the subscription:** open the PWA → Settings → Reminders → **Disable,
-   then Enable** (forces a fresh `subscribe()` — a plain re-open could re-store the dead
-   sub). Reload `/diag?token=<PUSH_TOKEN>` → confirm **`hasSubscription:true`** and
-   `build` = `2026-06-02.2`.
-3. **Prove end-to-end:** `…/heartbeat-on?token=…` → expect a "Plants ⏱ cron test" push
-   within 5 min (do step 2 first!), then `…/heartbeat-off?token=…`. Also check `cronLast`
-   is now < 5 min old (proves the new `*/5` is ticking).
-4. **Verify the real schedule** next morning: a 7:30 push when due; "This evening" then
-   yields the ~18:00 push.
+Worker build `2026-06-03.1` now records the sub lifecycle so we can prove this: `/diag`
+returns `subRegistered` (last /subscribe write) and `subDeleted` (ISO + status of the last
+Gone delete). PWA still v0.9.0.
+
+**Actions:**
+1. **Device-side root-cause fix (do this — the real fix):** On the Pixel, for the Plants
+   PWA set battery usage to **Unrestricted**, and turn **off** "Pause app activity if
+   unused" / "Remove permissions and free up space" for it. (Settings → Apps → Plants →
+   Battery = Unrestricted; and the App-info toggle "Pause app activity if unused" = off.)
+   This stops Android tearing down the FCM channel overnight.
+2. **Re-subscribe now:** open the PWA once (re-registers the sub → `hasSubscription:true`,
+   stamps `subRegistered`). Then **don't open it again** and leave the phone overnight.
+3. **Tomorrow ~9am, before opening the app, tap `/diag`:** if `subDeleted` has a fresh
+   overnight timestamp → Android still killed it (the battery settings didn't take / need
+   more). If `subDeleted` is stale and the reminder arrived → fixed.
 
 ## Next phase
 
