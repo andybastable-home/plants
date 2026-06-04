@@ -3,6 +3,13 @@
 Tiny Cloudflare Worker that sends the daily "what's due" Web Push. Deployed
 **separately** from the GitHub Pages app (Pages ignores this folder).
 
+> **Note (2026-06):** the daily reminder is now delivered by the native companion
+> (`../android/`), which reads the due-count from this worker's `/diag`. Web Push proved
+> unreliable across the nightly reboot (the subscription went `410 Gone` overnight on the
+> never-opened PWA). The cron + Web Push **send** path below is now dead weight, retained
+> only for reference and can be deleted in a later cleanup. The `/schedule` store and
+> `/diag` read path stay live — they're what the companion depends on.
+
 ## How it works
 
 - The app POSTs a schedule blob (`[{name, nextWaterDue, nextFeedDue}]`) to

@@ -1,0 +1,18 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.ap_
+*.aab
+# Keep a checked-in debug keystore if we add one, ignore real release keys
+*.jks
+*.keystore
+!debug.keystore
+/app/build/
+/build/

@@ -2,52 +2,42 @@
 
 ## Current phase
 
-**Phase 7 — Daily push notification** (code complete, v0.9.0; pending on-device verify)
+**Phase 7 — Daily reminder** (PIVOTED to a native companion; code complete, builds clean;
+pending on-device reboot verify)
 
-Daily ~7:30am London Web Push that fires **only when something's due**; tapping opens
-the Today pane; morning push offers a "This evening" defer (Part B, included).
+**Web Push is retired for the reminder.** Three mornings of `/diag` instrumentation proved
+it can't serve the killer use case (phone off overnight, powered on ~06:30, PWA deliberately
+never opened): the nightly **reboot invalidates the push subscription** (`410 Gone`, with
+`subRegistered` unchanged), and a never-opened PWA has no reliable way to re-register
+(`pushsubscriptionchange` is for browser key rotation, not OS teardown; the SW isn't woken on
+a closed app). Cron/urgency/inactivity were all ruled out first. Structural ceiling of Web Push.
 
-Architecture: a free **Cloudflare Worker** (`worker/`, deployed separately — Pages
-ignores it) sends Web Push via VAPID using `@block65/webcrypto-web-push`. The app POSTs
-a tiny absolute-due-date schedule blob to `/schedule` on every mutation (via the existing
-`scheduleBackup` debounce in `sync.js`, now sheet-independent). Cron fires at both UTC
-candidates; the handler reads Europe/London via `Intl` and only sends at 07:30/18:00
-London → DST self-corrects. No Google creds in the worker; due-ness is pure date compare.
+**The fix: a native companion (`android/`).** A plain Kotlin app schedules an exact, Doze-exempt
+`AlarmManager.setAlarmClock` for **07:30 local**, re-armed on boot (`BootReceiver`) — the phone
+wakes *itself*, no FCM/subscription/cron/internet-at-fire-time. At fire time `AlarmReceiver` GETs
+the worker's `/diag`, reads `dueToday.{water,feed,total}`, and notifies (generic fallback when
+offline); tapping opens the Plants PWA Today tab. Built on the borrowed Unity Android toolchain
+(mirrors sister project `bike-dashboard`), sideloaded to the Pixel 8a. `applicationId`
+`dev.bastable.plantsreminder`, v0.1.0.
 
-Client: `service-worker.js` has `push` + `notificationclick` (+ `worker-config` message
-for closed-page `/defer`). `app.js` has the subscribe/enable flow, `buildSchedule()`,
-`pushScheduleToWorker()` (queues `plants.notifyPending` on failure, retried on init),
-and `?tab=` deep-link. Settings has a **Reminders** section (Enable/Disable + Send test).
-Notification assets: `icons/icon-192.png` (colour) + `icons/badge-96.png` (mono).
+The **PWA is untouched** (still v0.9.0; its push code is now inert but harmless). The **worker is
+demoted to a due-count data endpoint** — `/schedule` store + `/diag` read stay live; cron + Web
+Push send are dead weight, retained for reference, deletable in a later cleanup.
 
-### Remaining (Andy, outside Claude) — the subscription keeps dying overnight
-Cron is **not** the problem (proven: `cronLast` always fresh, the */5 ticks fine). The
-problem is the **push subscription goes `Gone` (410) overnight on the never-opened PWA**:
-two mornings running, `/diag` showed `hasSubscription:false`. At 07:00 the worker tries to
-send, gets 410, deletes the dead sub → no reminder. `pushsubscriptionchange` doesn't save
-it — that event is for *browser* rotation, not Android's OS-level teardown of an "unused"
-app's FCM channel. A PWA that's by-design never opened is exactly what Android adaptive-
-battery / auto-revoke-permissions reclaims.
-
-Worker build `2026-06-03.1` now records the sub lifecycle so we can prove this: `/diag`
-returns `subRegistered` (last /subscribe write) and `subDeleted` (ISO + status of the last
-Gone delete). PWA still v0.9.0.
-
-**Actions:**
-1. **Device-side root-cause fix (do this — the real fix):** On the Pixel, for the Plants
-   PWA set battery usage to **Unrestricted**, and turn **off** "Pause app activity if
-   unused" / "Remove permissions and free up space" for it. (Settings → Apps → Plants →
-   Battery = Unrestricted; and the App-info toggle "Pause app activity if unused" = off.)
-   This stops Android tearing down the FCM channel overnight.
-2. **Re-subscribe now:** open the PWA once (re-registers the sub → `hasSubscription:true`,
-   stamps `subRegistered`). Then **don't open it again** and leave the phone overnight.
-3. **Tomorrow ~9am, before opening the app, tap `/diag`:** if `subDeleted` has a fresh
-   overnight timestamp → Android still killed it (the battery settings didn't take / need
-   more). If `subDeleted` is stale and the reminder arrived → fixed.
+### Remaining (Andy, on the Pixel — outside Claude)
+1. `cd plants/android`; build `app-debug.apk` (see `android/README.md`), `adb install -r`.
+2. Launch once → grant notification permission → **Test reminder now** → notification appears,
+   tapping it opens the PWA Today tab.
+3. **The real test:** confirm a reminder is scheduled, power off, power on, leave Plants
+   **unopened**, confirm the 07:30 notification fires and re-arms. This is the exact scenario
+   Web Push failed.
 
 ## Next phase
 
 Phase 8 — Polish (icons, empty states, visual pass).
+
+Fast-follows for the companion (noted, not built): "This evening" defer (one-shot 18:00 alarm
+from a notification action); retiring the worker's now-dead cron/push code.
 
 ## Conventions
 

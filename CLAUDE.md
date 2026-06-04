@@ -56,6 +56,8 @@ manifest.json      PWA manifest (don't touch without flagging)
 icons/             placeholder SVG (will be polished in Phase 8)
 .scripts/          export-context.ps1 (Gemini planner workflow)
 notes/             design spikes — read when starting the matching phase
+worker/            Cloudflare Worker — due-count data endpoint (/diag); Pages ignores it
+android/           native reminder companion — separately built/sideloaded, Pages ignores it; see android/README.md
 ```
 
 As `app.js` and `sync.js` grow, add `// ----` banner section comments and document them here so future Claude sessions can grep banners instead of reading whole files. The sister project `food-and-weight/CLAUDE.md` has the established format for that section — mirror it.
