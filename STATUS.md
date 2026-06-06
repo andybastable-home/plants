@@ -13,12 +13,16 @@ never opened): the nightly **reboot invalidates the push subscription** (`410 Go
 a closed app). Cron/urgency/inactivity were all ruled out first. Structural ceiling of Web Push.
 
 **The fix: a native companion (`android/`).** A plain Kotlin app schedules an exact, Doze-exempt
-`AlarmManager.setAlarmClock` for **07:30 local**, re-armed on boot (`BootReceiver`) — the phone
-wakes *itself*, no FCM/subscription/cron/internet-at-fire-time. At fire time `AlarmReceiver` GETs
-the worker's `/diag`, reads `dueToday.{water,feed,total}`, and notifies (generic fallback when
+`AlarmManager.setExactAndAllowWhileIdle` for **07:30 local**, re-armed on boot (`BootReceiver`) —
+the phone wakes *itself*, no FCM/subscription/cron/internet-at-fire-time. At fire time `AlarmReceiver`
+GETs the worker's `/diag`, reads `dueToday.{water,feed,total}`, and notifies (generic fallback when
 offline); tapping opens the Plants PWA Today tab. Built on the borrowed Unity Android toolchain
 (mirrors sister project `bike-dashboard`), sideloaded to the Pixel 8a. `applicationId`
-`dev.bastable.plantsreminder`, v0.1.0.
+`dev.bastable.plantsreminder`, v0.1.1.
+
+> v0.1.1: swapped `setAlarmClock` → `setExactAndAllowWhileIdle` — both fire exactly through Doze,
+> but the former forced a permanent status-bar alarm icon. Trade-off: no clock-app "next alarm"
+> entry, so arm-state is only checkable via **Test reminder now** / logcat.
 
 The **PWA is untouched** (still v0.9.0; its push code is now inert but harmless). The **worker is
 demoted to a due-count data endpoint** — `/schedule` store + `/diag` read stay live; cron + Web
