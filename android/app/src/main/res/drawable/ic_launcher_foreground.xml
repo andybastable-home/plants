@@ -1,0 +1,37 @@
+<!-- Foreground layer: same two-leaf + stem design as the Plants PWA icon.svg (512x512 viewport).
+     Scale 0.89 from centre so leaf tips reach (not exceed) the adaptive-icon clip circle. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <group
+        android:pivotX="256"
+        android:pivotY="256"
+        android:scaleX="0.89"
+        android:scaleY="0.89">
+        <!-- Left leaf -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#f9f9f5"
+            android:strokeWidth="32"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M256,373 c0,-128 -85,-192 -192,-192 0,128 85,192 192,192 z" />
+        <!-- Right leaf -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#f9f9f5"
+            android:strokeWidth="32"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M256,373 c0,-149 85,-235 192,-235 0,149 -85,235 -192,235 z" />
+        <!-- Stem -->
+        <path
+            android:fillColor="@android:color/transparent"
+            android:strokeColor="#f9f9f5"
+            android:strokeWidth="32"
+            android:strokeLineCap="round"
+            android:pathData="M256,373 L256,139" />
+    </group>
+</vector>
