@@ -10,18 +10,20 @@ import java.util.Calendar
 /**
  * Schedules the daily reminder as an exact, Doze-exempt local alarm.
  *
- * This is the whole point of the native companion: an exact, Doze-exempt alarm wakes the
- * phone *itself* at 07:30 — no FCM, no push subscription, no internet-at-fire-time, and it
- * survives a reboot via [BootReceiver]. That is precisely what Web Push could not do on a
- * never-opened PWA across the nightly power-off.
+ * This is the whole point of the native companion: a [AlarmManager.setAlarmClock] alarm
+ * wakes the phone *itself* at 07:30 — no FCM, no push subscription, no internet-at-fire-time,
+ * and it survives a reboot via [BootReceiver]. That is precisely what Web Push could not do
+ * on a never-opened PWA across the nightly power-off.
  *
- * Uses [AlarmManager.setExactAndAllowWhileIdle] rather than [AlarmManager.setAlarmClock]:
- * both fire exactly and through Doze, but setAlarmClock is treated as a literal alarm-clock
- * alarm and forces the status-bar alarm icon + lock-screen "next alarm" entry. For a once-
- * daily reminder on a stock Pixel that icon buys nothing — the once-per-9-min throttle on
- * *AndAllowWhileIdle alarms is irrelevant here — so we drop it. Covered by the manifest's
- * USE_EXACT_ALARM (auto-granted). Trade-off: no clock-app entry, so "is it armed?" is only
- * checkable via "Test reminder now" / logcat, not at a glance.
+ * MUST stay [AlarmManager.setAlarmClock], NOT setExactAndAllowWhileIdle. v0.1.1 swapped to
+ * the latter to drop the status-bar alarm icon, and the 07:30 reminder silently stopped
+ * firing overnight (v0.1.2 reverted). Reason: this companion is *never opened* — you only
+ * ever see its notification — so Android demotes it into the `rare`/`restricted` App Standby
+ * bucket, where setExactAndAllowWhileIdle alarms are throttled/deferred (Doze-exempt is not
+ * enough; App Standby is a separate axis). setAlarmClock is exempt from *both* Doze and App
+ * Standby — the only Android wakeup reliable for an app the user never touches. The permanent
+ * status-bar alarm icon is the price of that reliability, and doubles as an at-a-glance
+ * "is it armed?" indicator. Do not trade it away again.
  */
 object ReminderScheduler {
     const val TAG = "PlantsReminder"
@@ -56,8 +58,15 @@ object ReminderScheduler {
             Intent(context, AlarmReceiver::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        // Shown if the user inspects the pending alarm (e.g. clock app) — opens the app.
+        val showPI = PendingIntent.getActivity(
+            context,
+            ALARM_REQUEST,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
 
-        am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, alarmPI)
+        am.setAlarmClock(AlarmManager.AlarmClockInfo(next.timeInMillis, showPI), alarmPI)
         Log.i(TAG, "Next reminder armed for ${next.time}")
     }
 }

@@ -12,20 +12,23 @@ subscription (`410 Gone`), and a never-opened PWA has no reliable way to re-regi
 (`pushsubscriptionchange` is for browser key rotation, not OS teardown; the service worker
 isn't woken on a closed app). That's the structural ceiling of Web Push here.
 
-The fix is a **local alarm**. `AlarmManager.setExactAndAllowWhileIdle` fires exactly in Doze
-and is re-armed on boot, so the phone wakes *itself* — no FCM, no subscription, no cron, no
-internet required at fire time. The PWA (6 phases of CRUD + Sheets sync + Gemini) is untouched;
-this just bolts on the reliable reminder.
+The fix is a **local alarm**. `AlarmManager.setAlarmClock` fires in Doze and is re-armed on
+boot, so the phone wakes *itself* — no FCM, no subscription, no cron, no internet required at
+fire time. The PWA (6 phases of CRUD + Sheets sync + Gemini) is untouched; this just bolts on
+the reliable reminder.
 
-> Originally `setAlarmClock`, swapped to `setExactAndAllowWhileIdle` in v0.1.1: both fire
-> exactly through Doze, but `setAlarmClock` forces the status-bar alarm icon + lock-screen
-> "next alarm" entry, which bought nothing for a once-daily reminder. The trade-off is no
-> clock-app entry, so "is it armed?" is only checkable via **Test reminder now** / logcat.
+> **Must stay `setAlarmClock`.** v0.1.1 swapped to `setExactAndAllowWhileIdle` to drop the
+> status-bar alarm icon, and the 07:30 reminder silently stopped firing overnight (reverted
+> in v0.1.2). A never-opened app gets demoted into the `rare`/`restricted` **App Standby**
+> bucket, where `setExactAndAllowWhileIdle` is throttled/deferred — being Doze-exempt is not
+> enough, App Standby is a separate restriction. `setAlarmClock` is exempt from *both*, so
+> it's the only reliable wakeup for an app the user never touches. The permanent status-bar
+> alarm icon is the price, and doubles as an at-a-glance "is it armed?" indicator.
 
 ## How it works
 
 - **`ReminderScheduler.scheduleNext`** computes the next 07:30 local and arms an exact
-  `setExactAndAllowWhileIdle` alarm (Doze-exempt, no status-bar alarm icon).
+  `setAlarmClock` alarm (Doze- and App-Standby-exempt; shows the status-bar alarm icon).
 - **`AlarmReceiver`** fires at 07:30: GETs the existing Cloudflare worker's
   `/diag?token=…`, reads `dueToday.{water,feed,total}`, and posts the notification —
   `"<w> to water · <f> to feed today 🌱"` when something's due, nothing when `total==0`,
